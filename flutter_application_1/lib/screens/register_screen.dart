@@ -64,7 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (success) {
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacementNamed(context, '/courses');
     } else {
       setState(() {
         _errorMessage = 'Ошибка регистрации. Возможно, email уже используется';

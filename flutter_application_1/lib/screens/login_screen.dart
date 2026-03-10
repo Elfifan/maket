@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (success) {
       // Навигация на главный экран
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacementNamed(context, '/courses');
     } else {
       setState(() {
         _errorMessage = 'Неверный email или пароль';

@@ -3,8 +3,39 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 4; // Аккаунт активен
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    switch (index) {
+      case 0: // Дом
+        // Пока ничего
+        break;
+      case 1: // Курсы
+        Navigator.pushNamed(context, '/courses');
+        break;
+      case 2: // Поиск
+        // Пока ничего
+        break;
+      case 3: // Сообщения
+        // Пока ничего
+        break;
+      case 4: // Аккаунт
+        // Уже здесь
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,10 +96,9 @@ class HomeScreen extends StatelessWidget {
                           width: 2,
                         ),
                       ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 40,
-                        color: Color(0xFF2196F3),
+                      child: const Text(
+                        '😊', // Эмодзи вместо иконки
+                        style: TextStyle(fontSize: 40),
                       ),
                     ),
                     const SizedBox(height: 15),
@@ -183,6 +213,21 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF2196F3),
+        unselectedItemColor: const Color(0xFF9094A6),
+        showUnselectedLabels: true,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Дом'),
+          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Курсы'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Поиск'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Сообщения'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Аккаунт'),
+        ],
       ),
     );
   }

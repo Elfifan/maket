@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../models/course_model.dart';
+import '../models/module_model.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -153,6 +154,35 @@ class SupabaseService {
       }
     } catch (e, st) {
       print('Error getting courses: $e');
+      print(st);
+      return [];
+    }
+  }
+
+  // Получение списка модулей для курса по id_courses
+  Future<List<ModuleModel>> getModules(int courseId) async {
+    try {
+      final response = await _client
+          .from('module')
+          .select('id,id_courses,name,order_module,status')
+          .eq('id_courses', courseId)
+          .order('order_module', ascending: true);
+
+      if (response == null) {
+        print('[SupabaseService] warning: response is null for modules');
+        return [];
+      }
+
+      if (response is List) {
+        final list = List<Map<String, dynamic>>.from(response);
+        print('Loaded ${list.length} modules for course $courseId');
+        return list.map((j) => ModuleModel.fromJson(j)).toList();
+      } else {
+        print('[SupabaseService] unexpected response shape for modules: ${response.runtimeType}');
+        return [];
+      }
+    } catch (e, st) {
+      print('Error getting modules for course $courseId: $e');
       print(st);
       return [];
     }
