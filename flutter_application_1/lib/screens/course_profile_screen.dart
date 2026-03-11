@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../models/course_model.dart';
 import '../models/module_model.dart';
+import '../providers/auth_provider.dart';
 import '../services/supabase_service.dart';
 
 class CourseProfileScreen extends StatefulWidget {
@@ -15,6 +18,7 @@ class CourseProfileScreen extends StatefulWidget {
 class _CourseProfileScreenState extends State<CourseProfileScreen> {
   final List<ModuleModel> _modules = [];
   bool _loading = false;
+  bool _isPurchasing = false; // индикатор покупки
 
   @override
   void initState() {
@@ -62,73 +66,81 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.visibility_off_outlined, color: Colors.black87),
+          icon: const Icon(
+            Icons.visibility_off_outlined,
+            color: Colors.black87,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: Column(
         children: [
           // --- ВЕРХНЯЯ ЧАСТЬ (Шапка) ---
-// --- ВЕРХНЯЯ ЧАСТЬ (Шапка) ---
-Container(
-  height: 260,
-  width: double.infinity,
-  padding: const EdgeInsets.only(left: 24, top: 100, right: 24),
-  child: Stack(
-    clipBehavior: Clip.none, // Позволяет картинке слегка выходить за границы Stack, как в макете
-    children: [
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Бейдж Bestseller
+          // --- ВЕРХНЯЯ ЧАСТЬ (Шапка) ---
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFD700),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(4),
-                bottomLeft: Radius.circular(4),
-                topRight: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
-            ),
-            child: const Text(
-              'BESTSELLER',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-                color: Colors.black87,
-              ),
+            height: 260,
+            width: double.infinity,
+            padding: const EdgeInsets.only(left: 24, top: 100, right: 24),
+            child: Stack(
+              clipBehavior: Clip
+                  .none, // Позволяет картинке слегка выходить за границы Stack, как в макете
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Бейдж Bestseller
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFFD700),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                          bottomLeft: Radius.circular(4),
+                          topRight: Radius.circular(16),
+                          bottomRight: Radius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'BESTSELLER',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Заголовок в шапке (ограничиваем ширину, чтобы текст не залезал на картинку)
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.55,
+                      child: Text(
+                        widget.course.name,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color:
+                              textDark, // Использует переменную textDark из предыдущего кода
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                // Иллюстрация персонажа
+                Positioned(
+                  right: -10, // Прижимаем к правому краю
+                  bottom: -32, // Слегка опускаем вниз к белой карточке
+                  child: Image.asset(
+                    'lib/assets/images/course.png',
+                    height: 260, // Высоту можно немного подогнать по месту
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          // Заголовок в шапке (ограничиваем ширину, чтобы текст не залезал на картинку)
-          SizedBox(
-            width: MediaQuery.of(context).size.width * 0.55, 
-            child: Text(
-              widget.course.name,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: textDark, // Использует переменную textDark из предыдущего кода
-              ),
-            ),
-          ),
-        ],
-      ),
-      // Иллюстрация персонажа
-      Positioned(
-        right: -10, // Прижимаем к правому краю
-        bottom: -32, // Слегка опускаем вниз к белой карточке
-        child: Image.asset(
-          'lib/assets/images/course.png',
-          height: 260, // Высоту можно немного подогнать по месту
-          fit: BoxFit.contain,
-        ),
-      ),
-    ],
-  ),
-),      
           // --- ОСНОВНОЙ КОНТЕНТ (Белая карточка) ---
           Expanded(
             child: Container(
@@ -157,8 +169,8 @@ Container(
                           ),
                         ),
                         Text(
-                          widget.course.price != null 
-                              ? 'P${widget.course.price!.toStringAsFixed(2)}' 
+                          widget.course.price != null
+                              ? 'P${widget.course.price!.toStringAsFixed(2)}'
                               : 'P0.00',
                           style: const TextStyle(
                             fontSize: 22,
@@ -171,11 +183,11 @@ Container(
                     const SizedBox(height: 8),
                     // Заглушка: время и количество уроков
                     Text(
-                      '6ч 14мин · ${_modules.length} урока', 
+                      '6ч 14мин · ${_modules.length} урока',
                       style: const TextStyle(fontSize: 14, color: textGrey),
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Об этом курсе
                     const Text(
                       'Об этом курсе',
@@ -189,15 +201,19 @@ Container(
                     Text(
                       widget.course.description ?? 'Описание отсутствует...',
                       style: const TextStyle(
-                        fontSize: 14, 
-                        color: textGrey, 
+                        fontSize: 14,
+                        color: textGrey,
                         height: 1.5,
                       ),
                     ),
-                    
+
                     const SizedBox(height: 20),
                     const Center(
-                      child: Icon(Icons.visibility_off_outlined, color: textGrey, size: 20),
+                      child: Icon(
+                        Icons.visibility_off_outlined,
+                        color: textGrey,
+                        size: 20,
+                      ),
                     ),
                     const SizedBox(height: 20),
 
@@ -218,7 +234,7 @@ Container(
                         itemBuilder: (context, index) {
                           final module = _modules[index];
                           // Логика блокировки для демо (например, статус false означает, что модуль закрыт)
-                          final isLocked = module.status == false || index > 1; 
+                          final isLocked = module.status == false || index > 1;
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 24),
@@ -240,7 +256,8 @@ Container(
                                 // Инфо модуля
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         module.name,
@@ -257,13 +274,19 @@ Container(
                                             '6:10 мин', // Заглушка времени модуля
                                             style: TextStyle(
                                               fontSize: 13,
-                                              color: isLocked ? textGrey : primaryBlue,
+                                              color: isLocked
+                                                  ? textGrey
+                                                  : primaryBlue,
                                             ),
                                           ),
                                           if (!isLocked) ...[
                                             const SizedBox(width: 4),
-                                            const Icon(Icons.check_circle, size: 14, color: primaryBlue),
-                                          ]
+                                            const Icon(
+                                              Icons.check_circle,
+                                              size: 14,
+                                              color: primaryBlue,
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ],
@@ -274,7 +297,9 @@ Container(
                                   width: 48,
                                   height: 48,
                                   decoration: BoxDecoration(
-                                    color: isLocked ? const Color(0xFFD3DCFF) : primaryBlue,
+                                    color: isLocked
+                                        ? const Color(0xFFD3DCFF)
+                                        : primaryBlue,
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
@@ -295,11 +320,16 @@ Container(
           ),
         ],
       ),
-      
+
       // --- НИЖНЯЯ ПАНЕЛЬ (Кнопки) ---
       bottomNavigationBar: Container(
         color: Colors.white,
-        padding: const EdgeInsets.only(left: 24, right: 24, bottom: 32, top: 16),
+        padding: const EdgeInsets.only(
+          left: 24,
+          right: 24,
+          bottom: 32,
+          top: 16,
+        ),
         child: Row(
           children: [
             // Кнопка избранного (звездочка)
@@ -311,7 +341,11 @@ Container(
                 borderRadius: BorderRadius.circular(16),
               ),
               child: IconButton(
-                icon: const Icon(Icons.star_border, color: Color(0xFFFF6B00), size: 28),
+                icon: const Icon(
+                  Icons.star_border,
+                  color: Color(0xFFFF6B00),
+                  size: 28,
+                ),
                 onPressed: () {
                   // Логика добавления в избранное
                 },
@@ -323,8 +357,47 @@ Container(
               child: SizedBox(
                 height: 60,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Логика покупки
+                  onPressed: (_loading || _isPurchasing) ? null : () async {
+                    final authProvider = Provider.of<AuthProvider>(
+                      context,
+                      listen: false,
+                    );
+                    final currentUser = authProvider.currentUser;
+                    if (currentUser == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Сначала войдите в систему'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    // при желании можно заблокировать повторную покупку
+                    setState(() => _isPurchasing = true);
+                    final success = await SupabaseService().purchaseCourse(
+                      userId: currentUser.id!,
+                      courseId: widget.course.id,
+                      amount: widget.course.price ?? 0,
+                      userEmail: currentUser.email ?? '',
+                      courseName: widget.course.name,
+                    );
+                    setState(() => _isPurchasing = false);
+
+                    if (success) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Курс успешно куплен, чек отправлен на почту',
+                          ),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Не удалось оформить покупку'),
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryBlue,
@@ -333,14 +406,23 @@ Container(
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Купить',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child: _isPurchasing
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Купить',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
             ),

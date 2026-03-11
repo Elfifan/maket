@@ -78,7 +78,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- ЗАГОЛОВОК И АВАТАР ---
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
               child: Row(
