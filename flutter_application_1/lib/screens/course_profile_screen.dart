@@ -18,12 +18,14 @@ class CourseProfileScreen extends StatefulWidget {
 class _CourseProfileScreenState extends State<CourseProfileScreen> {
   final List<ModuleModel> _modules = [];
   bool _loading = false;
-  bool _isPurchasing = false; // индикатор покупки
+  bool _isPurchasing = false; 
+  bool _isEnrolled = false; 
 
   @override
   void initState() {
     super.initState();
     _loadModules();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkEnrollment());
   }
 
   Future<void> _loadModules() async {
@@ -51,9 +53,24 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
     }
   }
 
+  Future<void> _checkEnrollment() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUser = authProvider.currentUser;
+    if (currentUser == null) {
+      return;
+    }
+    await SupabaseService().initialize();
+    final enrolled = await SupabaseService().hasPurchasedCourse(
+      userId: currentUser.id!,
+      courseId: widget.course.id,
+    );
+    setState(() {
+      _isEnrolled = enrolled;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Основные цвета из макета
     const Color primaryBlue = Color(0xFF4561FF);
     const Color bgPink = Color(0xFFFFF0F5);
     const Color textDark = Color(0xFF1E1E2E);
@@ -67,7 +84,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(
-            Icons.visibility_off_outlined,
+            Icons.arrow_back,
             color: Colors.black87,
           ),
           onPressed: () => Navigator.of(context).pop(),
@@ -75,20 +92,18 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
       ),
       body: Column(
         children: [
-          // --- ВЕРХНЯЯ ЧАСТЬ (Шапка) ---
-          // --- ВЕРХНЯЯ ЧАСТЬ (Шапка) ---
+
           Container(
             height: 260,
             width: double.infinity,
             padding: const EdgeInsets.only(left: 24, top: 100, right: 24),
             child: Stack(
               clipBehavior: Clip
-                  .none, // Позволяет картинке слегка выходить за границы Stack, как в макете
+                  .none, 
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Бейдж Bestseller
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -113,7 +128,6 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    // Заголовок в шапке (ограничиваем ширину, чтобы текст не залезал на картинку)
                     SizedBox(
                       width: MediaQuery.of(context).size.width * 0.55,
                       child: Text(
@@ -122,26 +136,25 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
                           color:
-                              textDark, // Использует переменную textDark из предыдущего кода
+                              textDark, 
                         ),
                       ),
                     ),
                   ],
                 ),
-                // Иллюстрация персонажа
+
                 Positioned(
-                  right: -10, // Прижимаем к правому краю
-                  bottom: -32, // Слегка опускаем вниз к белой карточке
+                  right: -10, 
+                  bottom: -32, 
                   child: Image.asset(
                     'lib/assets/images/course.png',
-                    height: 260, // Высоту можно немного подогнать по месту
+                    height: 260, 
                     fit: BoxFit.contain,
                   ),
                 ),
               ],
             ),
           ),
-          // --- ОСНОВНОЙ КОНТЕНТ (Белая карточка) ---
           Expanded(
             child: Container(
               decoration: const BoxDecoration(
@@ -153,7 +166,6 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Название и Цена
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,14 +193,12 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    // Заглушка: время и количество уроков
                     Text(
                       '6ч 14мин · ${_modules.length} урока',
                       style: const TextStyle(fontSize: 14, color: textGrey),
                     ),
                     const SizedBox(height: 24),
 
-                    // Об этом курсе
                     const Text(
                       'Об этом курсе',
                       style: TextStyle(
@@ -217,7 +227,6 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Список модулей
                     if (_loading)
                       const Center(child: CircularProgressIndicator())
                     else if (_modules.isEmpty)
@@ -233,14 +242,12 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                         itemCount: _modules.length,
                         itemBuilder: (context, index) {
                           final module = _modules[index];
-                          // Логика блокировки для демо (например, статус false означает, что модуль закрыт)
                           final isLocked = module.status == false || index > 1;
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 24),
                             child: Row(
                               children: [
-                                // Порядковый номер (01, 02...)
                                 SizedBox(
                                   width: 44,
                                   child: Text(
@@ -253,7 +260,6 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                // Инфо модуля
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -271,7 +277,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                                       Row(
                                         children: [
                                           Text(
-                                            '6:10 мин', // Заглушка времени модуля
+                                            '6:10 мин',
                                             style: TextStyle(
                                               fontSize: 13,
                                               color: isLocked
@@ -292,7 +298,6 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                                     ],
                                   ),
                                 ),
-                                // Кнопка действия (Play / Lock)
                                 Container(
                                   width: 48,
                                   height: 48,
@@ -321,7 +326,6 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
         ],
       ),
 
-      // --- НИЖНЯЯ ПАНЕЛЬ (Кнопки) ---
       bottomNavigationBar: Container(
         color: Colors.white,
         padding: const EdgeInsets.only(
@@ -332,7 +336,6 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
         ),
         child: Row(
           children: [
-            // Кнопка избранного (звездочка)
             Container(
               width: 60,
               height: 60,
@@ -347,17 +350,27 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                   size: 28,
                 ),
                 onPressed: () {
-                  // Логика добавления в избранное
                 },
               ),
             ),
             const SizedBox(width: 16),
-            // Кнопка "Купить"
             Expanded(
               child: SizedBox(
                 height: 60,
-                child: ElevatedButton(
-                  onPressed: (_loading || _isPurchasing) ? null : () async {
+                child: _isEnrolled
+                    ? Container(
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'Вы уже записаны на курс',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      )
+                    : ElevatedButton(
+                        onPressed: (_loading || _isPurchasing) ? null : () async {
                     final authProvider = Provider.of<AuthProvider>(
                       context,
                       listen: false,
@@ -372,7 +385,6 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                       return;
                     }
 
-                    // при желании можно заблокировать повторную покупку
                     setState(() => _isPurchasing = true);
                     final success = await SupabaseService().purchaseCourse(
                       userId: currentUser.id!,
@@ -384,6 +396,9 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                     setState(() => _isPurchasing = false);
 
                     if (success) {
+                      setState(() {
+                        _isEnrolled = true;
+                      });
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(

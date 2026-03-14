@@ -89,7 +89,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Верхняя серая часть
             Container(
               height: MediaQuery.of(context).size.height * 0.16,
               width: double.infinity,
@@ -130,7 +129,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             
-            // Белая часть с формой
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24.0),
@@ -140,7 +138,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: [
                       const SizedBox(height: 20),
                       
-                      // Поле Email
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
@@ -164,7 +161,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(15),
                             borderSide: const BorderSide(
-                              color: Color(0xFF2196F3), // Ярко-синий
+                              color: Color(0xFF2196F3), 
                               width: 2,
                             ),
                           ),
@@ -193,7 +190,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       
                       const SizedBox(height: 20),
                       
-                      // Поле Пароль
                       TextFormField(
                         controller: _passwordController,
                         decoration: InputDecoration(
@@ -232,7 +228,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(15),
                             borderSide: const BorderSide(
-                              color: Color(0xFF2196F3), // Ярко-синий
+                              color: Color(0xFF2196F3), 
                               width: 2,
                             ),
                           ),
@@ -261,7 +257,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       
                       const SizedBox(height: 20),
                       
-                      // Поле Подтверждение пароля
                       TextFormField(
                         controller: _confirmPasswordController,
                         decoration: InputDecoration(
@@ -300,7 +295,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(15),
                             borderSide: const BorderSide(
-                              color: Color(0xFF2196F3), // Ярко-синий
+                              color: Color(0xFF2196F3), 
                               width: 2,
                             ),
                           ),
@@ -324,7 +319,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         },
                       ),
                       
-                      // Чекбокс согласия с условиями
                       Padding(
                         padding: const EdgeInsets.only(top: 20),
                         child: Row(
@@ -341,7 +335,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     });
                                   }
                                 },
-                                activeColor: const Color(0xFF2196F3), // Ярко-синий
+                                activeColor: const Color(0xFF2196F3), 
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(5),
                                 ),
@@ -367,7 +361,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     TextSpan(
                                       text: 'правилами и условиями',
                                       style: TextStyle(
-                                        color: Color(0xFF2196F3), // Ярко-синий
+                                        color: Color(0xFF2196F3), 
                                         fontWeight: FontWeight.w600,
                                         decoration: TextDecoration.underline,
                                       ),
@@ -381,7 +375,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       
-                      // Сообщение об ошибке
                       if (_errorMessage != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 16.0),
@@ -419,14 +412,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       
                       const SizedBox(height: 30),
                       
-                      // Кнопка регистрации (уменьшенная в 1.4 раза)
                       SizedBox(
                         width: double.infinity,
-                        height: 40, // Было 55, стало 55/1.4 ≈ 40
+                        height: 40, 
                         child: ElevatedButton(
                           onPressed: _register,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2196F3), // Ярко-синий
+                            backgroundColor: const Color(0xFF2196F3), 
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                             ),
@@ -446,7 +438,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       
                       const SizedBox(height: 20),
                       
-                      // Ссылка на авторизацию
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -469,7 +460,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             child: const Text(
                               'Войти',
                               style: TextStyle(
-                                color: Color(0xFF2196F3), // Ярко-синий
+                                color: Color(0xFF2196F3), 
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),

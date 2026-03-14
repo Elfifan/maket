@@ -11,7 +11,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // Данные для слайдов
   final List<Map<String, String>> _onboardingData = [
     {
       "title": "Множество бесплатных\nпробных курсов",
@@ -37,14 +36,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Отступ сверху для воздуха, так как кнопки Skip больше нет
             const SizedBox(height: 20),
 
-            // Основной контент (Слайдер)
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                // BouncingScrollPhysics делает свайп приятным (пружинит)
                 physics: const BouncingScrollPhysics(), 
                 onPageChanged: (value) {
                   setState(() {
@@ -58,7 +54,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
 
-            // Индикаторы страниц (точки)
             Padding(
               padding: const EdgeInsets.only(bottom: 20),
               child: Row(
@@ -70,13 +65,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
 
-            // Блок кнопок (появляется ТОЛЬКО на последнем слайде)
             if (_currentPage == _onboardingData.length - 1)
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
                 child: Row(
                   children: [
-                    // Кнопка "Зарегистрироваться"
                     Expanded(
                       child: SizedBox(
                         height: 50,
@@ -104,7 +97,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                     ),
                     const SizedBox(width: 15),
-                    // Кнопка "Войти"
                     Expanded(
                       child: SizedBox(
                         height: 50,
@@ -133,8 +125,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
               )
             else
-              // Пустое место высотой с кнопки, чтобы контент не прыгал, 
-              // или можно уменьшить, если хотите чтобы точки были в самом низу
+
               const SizedBox(height: 70), 
           ],
         ),
@@ -142,7 +133,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  // Виджет отдельной страницы
   Widget _buildOnboardingPage({
     required Map<String, String> item,
   }) {
@@ -158,10 +148,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             fit: BoxFit.contain,
           ),
           
-          // ЗАГЛУШКА ДЛЯ КАРТИНКИ
-        
-          
-          // ЗАГОЛОВОК
+
           Text(
             item['title']!,
             textAlign: TextAlign.center,
@@ -175,7 +162,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           
           const SizedBox(height: 15),
           
-          // ОПИСАНИЕ
           Text(
             item['text']!,
             textAlign: TextAlign.center,
@@ -190,13 +176,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  // Индикатор (точка)
   Widget _buildDot({required int index}) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       margin: const EdgeInsets.only(right: 5),
       height: 6,
-      width: _currentPage == index ? 20 : 6, // Активная точка шире
+      width: _currentPage == index ? 20 : 6, 
       decoration: BoxDecoration(
         color: _currentPage == index
             ? const Color(0xFF2196F3)

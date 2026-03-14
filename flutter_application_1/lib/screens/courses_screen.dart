@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/course_model.dart';
 import '../services/supabase_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import 'course_profile_screen.dart';
 
 class CoursesScreen extends StatefulWidget {
@@ -16,9 +18,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
   bool _loading = false;
   String _search = '';
   String _filter = 'Все';
-  int _selectedIndex = 1; // Курсы активны по умолчанию
+  int _selectedIndex = 1; 
 
-  // Цвета из макета
+  int id = 0;
+
   static const Color primaryBlue = Color(0xFF4561FF);
   static const Color textDark = Color(0xFF1E1E2E);
   static const Color textGrey = Color(0xFF9094A6);
@@ -33,10 +36,21 @@ class _CoursesScreenState extends State<CoursesScreen> {
     setState(() => _loading = true);
     await SupabaseService().initialize();
     try {
-      final list = await SupabaseService().getCourses(
-        search: _search,
-        filterCategory: _filter,
-      );
+      List<CourseModel> list;
+      if (_filter == 'Мои курсы') {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final currentUser = authProvider.currentUser;
+        if (currentUser != null) {
+          list = await SupabaseService().getUserCourses(userId: currentUser.id!);
+        } else {
+          list = [];
+        }
+      } else {
+        list = await SupabaseService().getCourses(
+          search: _search,
+          filterCategory: _filter,
+        );
+      }
       setState(() {
         _courses..clear()..addAll(list);
         _loading = false;
@@ -83,9 +97,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Курсы',
-                    style: TextStyle(
+                  Text(
+                    'Курсы ${id}',
+                    style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w800,
                       color: textDark,
@@ -96,7 +110,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     backgroundColor: const Color(0xFFFFE5E5),
                     child: ClipOval(
                       child: Image.network(
-                        'https://api.dicebear.com/7.x/avataaars/png?seed=Felix', // Временный аватар
+                        'https://api.dicebear.com/7.x/avataaars/png?seed=Felix',
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -105,7 +119,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
               ),
             ),
 
-            // --- ПОИСК ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: Container(
@@ -127,7 +140,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
               ),
             ),
 
-            // --- КАРТОЧКИ КАТЕГОРИЙ ---
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               child: Row(
@@ -141,7 +153,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
             const SizedBox(height: 20),
 
-            // --- ПОДЗАГОЛОВОК И ТАБЫ ---
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24),
               child: Text(
@@ -157,13 +168,12 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 children: [
                   _buildTab('Все'),
-                  _buildTab('Популярное'),
+                  _buildTab('Мои курсы'),
                   _buildTab('Новые'),
                 ],
               ),
             ),
 
-            // --- СПИСОК КУРСОВ ---
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
@@ -174,6 +184,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                         final course = _courses[index];
                         final rand = Random(course.id);
                         final durationH = 10 + rand.nextInt(10);
+                        id = _courses.length;
                         
                         return GestureDetector(
                           onTap: () => Navigator.push(
@@ -196,7 +207,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
                             ),
                             child: Row(
                               children: [
-                                // Заглушка изображения курса
                                 Container(
                                   width: 80,
                                   height: 80,
@@ -206,7 +216,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 16),
-                                // Инфо курса
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,7 +281,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
           ],
         ),
       ),
-      // --- НИЖНЯЯ НАВИГАЦИЯ ---
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: primaryBlue,

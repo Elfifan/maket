@@ -11,7 +11,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 4; // Аккаунт активен
+  int _selectedIndex = 4; 
 
   void _onItemTapped(int index) {
     setState(() {
@@ -19,20 +19,16 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     switch (index) {
-      case 0: // Дом
-        // Пока ничего
+      case 0: 
         break;
-      case 1: // Курсы
+      case 1: 
         Navigator.pushNamed(context, '/courses');
         break;
-      case 2: // Поиск
-        // Пока ничего
+      case 2: 
         break;
-      case 3: // Сообщения
-        // Пока ничего
+      case 3:
         break;
-      case 4: // Аккаунт
-        // Уже здесь
+      case 4: 
         break;
     }
   }
@@ -43,7 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = authProvider.currentUser;
 
     if (user == null) {
-      // Если пользователь не загружен, переходим на логин
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushReplacementNamed(context, '/login');
       });
@@ -81,7 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Аватарка
               Center(
                 child: Column(
                   children: [
@@ -97,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       child: const Text(
-                        '😊', // Эмодзи вместо иконки
+                        '😊', 
                         style: TextStyle(fontSize: 40),
                       ),
                     ),
@@ -116,7 +110,6 @@ class _HomeScreenState extends State<HomeScreen> {
               
               const SizedBox(height: 30),
               
-              // Информация о профиле
               Card(
                 elevation: 1,
                 shape: RoundedRectangleBorder(
@@ -171,7 +164,6 @@ class _HomeScreenState extends State<HomeScreen> {
               
               const SizedBox(height: 25),
               
-              // Кнопка выхода
               SizedBox(
                 width: double.infinity,
                 height: 45,

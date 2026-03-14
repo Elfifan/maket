@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
@@ -21,7 +20,6 @@ class SupabaseService {
 
   Future<void> initialize() async {
     if (_initialized) {
-      // уже инициализирован
       return;
     }
     await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
@@ -30,7 +28,6 @@ class SupabaseService {
     print('Supabase initialized');
   }
 
-  // Упрощенная регистрация без имени и аватара
   Future<UserModel?> register({
     required String email,
     required String password,
@@ -58,7 +55,6 @@ class SupabaseService {
     }
   }
 
-  // Авторизация
   Future<UserModel?> login(String email, String password) async {
     try {
       print('Attempting login for: $email');
@@ -80,7 +76,6 @@ class SupabaseService {
         return null;
       }
 
-      // Обновляем дату последнего входа
       await _client
           .from('users')
           .update({
@@ -96,7 +91,6 @@ class SupabaseService {
     }
   }
 
-  // Получение всех пользователей (для тестирования)
   Future<List<Map<String, dynamic>>> getAllUsers() async {
     try {
       final response = await _client
@@ -112,15 +106,13 @@ class SupabaseService {
     }
   }
 
-  // Получение списка курсов из таблицы "courses".
-  // Можно указать необязательные параметры для поиска по имени и фильтра.
+
   Future<List<CourseModel>> getCourses({
     String? search,
     String? filterCategory,
   }) async {
     try {
-      // Построим запрос: сначала фильтры (ilike), затем сортировку (order).
-      // explicitly list columns (exclude icon) to avoid transporting it
+
       var query = _client
           .from('courses')
           .select(
@@ -132,35 +124,20 @@ class SupabaseService {
       }
       if (filterCategory != null &&
           filterCategory.isNotEmpty &&
-          filterCategory != 'Все') {
-        // Используем перечисленные нами категории как подстроку
+          filterCategory != 'Все' &&
+          filterCategory != 'Мои курсы') {
         query = query.ilike('name', '%$filterCategory%');
       }
 
-      // Применяем сортировку последней (order возвращает PostgrestTransformBuilder)
       final response = await query.order('date_create', ascending: false);
-      // debug info
       print('[SupabaseService] raw response type: ${response.runtimeType}');
       print('[SupabaseService] raw response content: $response');
 
-      if (response == null) {
-        print('[SupabaseService] warning: response is null');
-        return [];
-      }
-
-      if (response is List) {
-        final list = List<Map<String, dynamic>>.from(response);
-        print(
-          'Loaded ${list.length} courses (search=$search, filter=$filterCategory)',
-        );
-        return list.map((j) => CourseModel.fromJson(j)).toList();
-      } else {
-        // Если сервер вернул ошибку или не список
-        print(
-          '[SupabaseService] unexpected response shape: ${response.runtimeType}',
-        );
-        return [];
-      }
+      final list = List<Map<String, dynamic>>.from(response as List);
+      print(
+        'Loaded ${list.length} courses (search=$search, filter=$filterCategory)',
+      );
+      return list.map((j) => CourseModel.fromJson(j)).toList();
     } catch (e, st) {
       print('Error getting courses: $e');
       print(st);
@@ -168,7 +145,34 @@ class SupabaseService {
     }
   }
 
-  // Получение списка модулей для курса по id_courses
+  /// Список курсов, приобретённых пользователем.
+  Future<List<CourseModel>> getUserCourses({
+    required int userId,
+  }) async {
+    try {
+      final resp = await _client
+          .from('user_courses')
+          .select('id_courses')
+          .eq('id_user', userId);
+      final ids = List<Map<String, dynamic>>.from(resp)
+          .map((e) => e['id_courses'])
+          .toList();
+      if (ids.isEmpty) return [];
+      final coursesResp = await _client
+          .from('courses')
+          .select(
+            'id,id_employee,name,description,date_create,price,complexity,status',
+          )
+          .filter('id', 'in', '(${ids.join(',')})');
+      final list = List<Map<String, dynamic>>.from(coursesResp as List);
+      return list.map((j) => CourseModel.fromJson(j)).toList();
+    } catch (e, st) {
+      print('[SupabaseService] error getting user courses: $e');
+      print(st);
+      return [];
+    }
+  }
+
   Future<List<ModuleModel>> getModules(int courseId) async {
     try {
       final response = await _client
@@ -187,14 +191,25 @@ class SupabaseService {
     }
   }
 
-  /// Создает запись о покупке курса и транзакцию.
-  ///
-  /// После того как строки вставлены в таблицы `transactions` и
-  /// `user_courses`, выполняется попытка отправить e‑mail‑чек. На
-  /// стороне сервера вы можете реализовать такую же логику в
-  /// Postgres‑функции и вызывать её через RPC (`_client.rpc(...)`).
-  ///
-  /// Возвращает `true`, если всё прошло успешно.
+
+  Future<bool> hasPurchasedCourse({
+    required int userId,
+    required int courseId,
+  }) async {
+    try {
+      final existing = await _client
+          .from('user_courses')
+          .select('id')
+          .eq('id_user', userId)
+          .eq('id_courses', courseId)
+          .maybeSingle();
+      return existing != null;
+    } catch (e) {
+      print('[SupabaseService] error checking purchase: $e');
+      return false;
+    }
+  }
+
   Future<bool> purchaseCourse({
     required int userId,
     required int courseId,
@@ -203,7 +218,6 @@ class SupabaseService {
     required String courseName,
   }) async {
     try {
-      // start transaction, чтобы оба insert'а были атомарны
       await _client.from('transactions').insert({
         'id_user': userId,
         'id_courses': courseId,
@@ -211,29 +225,49 @@ class SupabaseService {
         'payment_status': 'completed',
       });
 
-      await _client.from('user_courses').insert({
-        'id_user': userId,
-        'id_courses': courseId,
-        'purchase_price': amount,
-      });
+      final existing = await _client
+          .from('user_courses')
+          .select('id')
+          .eq('id_user', userId)
+          .eq('id_courses', courseId)
+          .maybeSingle();
 
-      // Попытка вызвать удалённую функцию, если она имеется
+      if (existing == null) {
+        await _client.from('user_courses').insert({
+          'id_user': userId,
+          'id_courses': courseId,
+          'purchase_price': amount,
+        });
+      } else {
+        print('[purchaseCourse] Пользователь $userId уже приобрёл курс $courseId, повторная запись пропущена');
+      }
+
+
       try {
         await _client.rpc(
           'send_receipt',
           params: {'user_id': userId, 'course_id': courseId, 'amount': amount},
         );
       } catch (_) {
-        // если rpc не настроена, мы просто проигнорируем
       }
 
-      // локальный метод отправки письма - для примера, можно заменить
-      // на любой другой сервис (SendGrid, Mailgun и т.д.)
-      await _sendEmailReceipt(
-        toEmail: userEmail,
-        courseName: courseName,
-        amount: amount,
-      );
+
+      if (userEmail.trim().isEmpty || !userEmail.contains('@')) {
+        print('[purchaseCourse] Адрес "$userEmail" некорректен, письмо не отправляется');
+      } else {
+        try {
+          final sent = await _sendEmailReceipt(
+            toEmail: userEmail,
+            courseName: courseName,
+            amount: amount,
+          );
+          if (!sent) {
+            print('[purchaseCourse] _sendEmailReceipt сигнализировал об ошибке');
+          }
+        } catch (e) {
+          print('[purchaseCourse] ошибка при отправке письма: $e');
+        }
+      }
 
       return true;
     } catch (e, st) {
@@ -243,35 +277,27 @@ class SupabaseService {
     }
   }
 
-  /// Отправляет письмо с чеком через SMTP‑сервер Яндекса.
-  ///
-  /// В идеале конфиденциальные данные (логин/пароль) выносить в
-  /// переменные окружения или защищённое хранилище.
-/// Отправляет красивое HTML-письмо с чеком через SMTP‑сервер Яндекса.
-  Future<void> _sendEmailReceipt({
+  Future<bool> _sendEmailReceipt({
     required String toEmail,
     required String courseName,
     required double amount,
   }) async {
     try {
-      // Учётные данные (в идеале использовать dotenv / переменные окружения)
       const username = 'vergunovcyril@yandex.ru';
       const password = 'yatdkhfbiiodwnfj';
 
       final smtpServer = SmtpServer(
         'smtp.yandex.ru',
+        port: 465,
         username: username,
         password: password,
         ssl: true,
       );
 
-      // Генерируем данные для чека
       final date = DateTime.now();
       final dateString = '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-      // Создаем уникальный номер заказа на основе времени
       final orderId = 'TXN-${date.millisecondsSinceEpoch.toString().substring(5)}';
 
-      // HTML шаблон чека
       final htmlContent = '''
       <!DOCTYPE html>
       <html>
@@ -335,7 +361,6 @@ class SupabaseService {
         ..from = Address(username, 'Учебный сервис')
         ..recipients.add(toEmail)
         ..subject = '🧾 Ваш чек: покупка курса «$courseName»'
-        // Вот здесь мы передаем htmlContent вместо text
         ..html = htmlContent;
 
       print('[Email] Готовится отправка письма на: $toEmail');
@@ -348,16 +373,17 @@ class SupabaseService {
         },
       );
       print('[Email] ✅ Письмо отправлено: $sendReport');
+      return true;
     } on MailerException catch (e) {
       print('[Email] ❌ ОШИБКА MailerException: $e');
       for (var p in e.problems) {
         print('[Email] Проблема: ${p.code}: ${p.msg}');
       }
-      rethrow;
+      return false;
     } catch (e, st) {
       print('[Email] ❌ ОШИБКА при отправке письма: $e');
       print('[Email] Stacktrace: $st');
-      rethrow;
+      return false;
     }
   }
 }
