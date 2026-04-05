@@ -13,16 +13,26 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+    
 
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.12.0
   provider: ^6.1.5+1
   image_picker: ^1.2.1
   intl: ^0.20.2
-  http: ^0.13.5
+  http: ^1.1.0
   mailer: ^6.2.7
+  flutter_markdown: ^0.7.3+1
+  url_launcher: ^6.3.1
+  video_player: ^2.8.1
+  chewie: ^1.8.1
+  google_fonts: ^6.1.0
+  flutter_highlight: ^0.7.0 
+  uuid: ^4.3.3
 
+
+
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

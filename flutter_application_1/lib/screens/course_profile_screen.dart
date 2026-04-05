@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../models/course_model.dart';
 import '../models/module_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/supabase_service.dart';
+import 'submodule_content_screen.dart';
 
 class CourseProfileScreen extends StatefulWidget {
   final CourseModel course;
@@ -15,435 +15,413 @@ class CourseProfileScreen extends StatefulWidget {
   State<CourseProfileScreen> createState() => _CourseProfileScreenState();
 }
 
-class _CourseProfileScreenState extends State<CourseProfileScreen> {
-  final List<ModuleModel> _modules = [];
+class _CourseProfileScreenState extends State<CourseProfileScreen> with SingleTickerProviderStateMixin {
+  List<Map<String, dynamic>> _courseStructure = [];
   bool _loading = false;
-  bool _isPurchasing = false; 
-  bool _isEnrolled = false; 
+  bool _isPurchasing = false;
+  bool _isEnrolled = false;
+
+  // Константы дизайна
+  static const Color _textDark = Color(0xFF1E1E2E);
+  static const Color _textGrey = Color(0xFF9094A6);
+  static const Color _primaryPurple = Color(0xFFA58EFF);
+  static const Color _bgLightGrey = Color(0xFFF8F9FB);
+
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadModules();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkEnrollment());
-  }
-
-  Future<void> _loadModules() async {
-    setState(() {
-      _loading = true;
-    });
-
-    await SupabaseService().initialize();
-
-    try {
-      final list = await SupabaseService().getModules(widget.course.id);
-      setState(() {
-        _modules
-          ..clear()
-          ..addAll(list);
-        _loading = false;
-      });
-    } catch (e, st) {
-      debugPrint('[CourseProfileScreen] error fetching modules: $e');
-      debugPrint('$st');
-      setState(() {
-        _modules.clear();
-        _loading = false;
-      });
-    }
+    _checkEnrollment();
   }
 
   Future<void> _checkEnrollment() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUser = authProvider.currentUser;
-    if (currentUser == null) {
-      return;
-    }
-    await SupabaseService().initialize();
-    final enrolled = await SupabaseService().hasPurchasedCourse(
-      userId: currentUser.id!,
-      courseId: widget.course.id,
+    if (authProvider.currentUser == null) return;
+
+    final enrolled = await SupabaseService().isUserEnrolled(
+      authProvider.currentUser!.id!,
+      widget.course.id,
     );
-    setState(() {
-      _isEnrolled = enrolled;
-    });
+    if (mounted) setState(() => _isEnrolled = enrolled);
   }
+
+Future<void> _loadModules() async {
+  setState(() => _loading = true);
+  try {
+    final data = await SupabaseService().getModulesWithSubmodules(widget.course.id);
+    setState(() {
+      _courseStructure = data;
+      _loading = false;
+    });
+  } catch (e) {
+    setState(() => _loading = false);
+  }
+}
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryBlue = Color(0xFF4561FF);
-    const Color bgPink = Color(0xFFFFF0F5);
-    const Color textDark = Color(0xFF1E1E2E);
-    const Color textGrey = Color(0xFF9094A6);
-
     return Scaffold(
-      backgroundColor: bgPink,
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.black87,
+      backgroundColor: Colors.white,
+      appBar: _buildAppBar(),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 100),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Большой баннер курса
+                _buildCourseBanner(),
+                
+                const SizedBox(height: 24),
+                
+                // 2. Табы (О курсе / Плейлист)
+                _buildTabBar(),
+                
+                const SizedBox(height: 32),
+                
+                // 3. Контент в зависимости от выбранного таба
+                _loading 
+                  ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
+                  : _buildModulesList(),
+              ],
+            ),
           ),
-          onPressed: () => Navigator.of(context).pop(),
+          
+          // 4. Кнопка действия снизу
+          Positioned(
+            bottom: 24,
+            left: 24,
+            right: 24,
+            child: _buildActionButton(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _textDark, size: 20),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: const Text(
+        'Детали курса',
+        style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildCourseBanner() {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(32),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFE4DAFF), Color(0xFFF2C9D4)],
         ),
       ),
-      body: Column(
+      child: Stack(
         children: [
-
-          Container(
-            height: 260,
-            width: double.infinity,
-            padding: const EdgeInsets.only(left: 24, top: 100, right: 24),
-            child: Stack(
-              clipBehavior: Clip
-                  .none, 
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFFD700),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(4),
-                          bottomLeft: Radius.circular(4),
-                          topRight: Radius.circular(16),
-                          bottomRight: Radius.circular(16),
-                        ),
-                      ),
-                      child: const Text(
-                        'BESTSELLER',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.55,
-                      child: Text(
-                        widget.course.name,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color:
-                              textDark, 
-                        ),
-                      ),
-                    ),
-                  ],
+          // Заглушка под картинку или реальное изображение
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: Opacity(
+                opacity: 0.8,
+                child: Image.network(
+                  'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=500', 
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stack) => Container(color: Colors.transparent),
                 ),
-
-                Positioned(
-                  right: -10, 
-                  bottom: -32, 
-                  child: Image.asset(
-                    'lib/assets/images/course.png',
-                    height: 260, 
-                    fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(20),
                   ),
+                  child: Text(
+                    'Сложность: ${widget.course.complexity ?? 1}',
+                    style: const TextStyle(color: _primaryPurple, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  widget.course.name,
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, height: 1.1),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: _bgLightGrey,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: TabBar(
+        controller: _tabController,
+        dividerColor: Colors.transparent,
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)],
+        ),
+        labelColor: _textDark,
+        unselectedLabelColor: _textGrey,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        tabs: const [Tab(text: 'О курсе'), Tab(text: 'Плейлист')],
+      ),
+    );
+  }
+
+Widget _buildModulesList() {
+  if (_loading) return const Center(child: CircularProgressIndicator());
+  if (_courseStructure.isEmpty) return const Text("Материалы курса скоро появятся");
+
+  return ListView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    itemCount: _courseStructure.length,
+    itemBuilder: (context, index) {
+      final module = _courseStructure[index];
+      final List submodules = module['submodule'] ?? [];
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFFA58EFF).withOpacity(0.1),
+              child: Text("${module['order_module'] ?? index + 1}", 
+                style: const TextStyle(color: Color(0xFFA58EFF), fontWeight: FontWeight.bold)),
+            ),
+            title: Text(
+              module['name'] ?? 'Без названия',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Text("${submodules.length} уроков", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            children: submodules.map((sub) {
+              // Находим внутри ListView.builder -> itemBuilder -> submodules.map((sub) { ... })
+
+return ListTile(
+  contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
+  // Иконка слева: если курс куплен - яркая, если нет - серая
+  leading: Icon(
+    Icons.play_circle_outline, 
+    color: _isEnrolled ? const Color(0xFFA58EFF) : Colors.grey, 
+    size: 20
+  ),
+  title: Text(
+    sub['name'] ?? 'Без названия',
+    style: TextStyle(
+      color: _isEnrolled ? _textDark : _textGrey, // Текст тускнеет, если не куплено
+    ),
+  ),
+  // ИСПРАВЛЕНИЕ ТУТ: Иконка справа зависит от статуса покупки
+  trailing: Icon(
+    _isEnrolled ? Icons.arrow_forward_ios_rounded : Icons.lock_outline, 
+    size: 16, 
+    color: Colors.grey
+  ), 
+  onTap: () {
+    if (_isEnrolled) {
+      final String? contentUrl = sub['content'];
+      
+      if (contentUrl != null && contentUrl.isNotEmpty) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SubmoduleContentScreen(
+              title: sub['name'] ?? 'Урок',
+              contentUrl: contentUrl,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Контент для этого урока еще не загружен')),
+        );
+      }
+    } else {
+      // Сообщение, если пользователь пытается открыть закрытый курс
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Сначала необходимо купить курс'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  },
+);
+            }).toList(),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+  Widget _buildModuleTile(ModuleModel module) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _bgLightGrey,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEEEEEE)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 40, width: 40,
+            decoration: const BoxDecoration(color: Color(0xFFF0EBFF), shape: BoxShape.circle),
+            child: const Icon(Icons.play_arrow_rounded, color: _primaryPurple),
+          ),
+          const SizedBox(width: 16),
           Expanded(
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-              ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            widget.course.name,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: textDark,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          widget.course.price != null
-                              ? 'P${widget.course.price!.toStringAsFixed(2)}'
-                              : 'P0.00',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: primaryBlue,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '6ч 14мин · ${_modules.length} урока',
-                      style: const TextStyle(fontSize: 14, color: textGrey),
-                    ),
-                    const SizedBox(height: 24),
-
-                    const Text(
-                      'Об этом курсе',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      widget.course.description ?? 'Описание отсутствует...',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: textGrey,
-                        height: 1.5,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-                    const Center(
-                      child: Icon(
-                        Icons.visibility_off_outlined,
-                        color: textGrey,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    if (_loading)
-                      const Center(child: CircularProgressIndicator())
-                    else if (_modules.isEmpty)
-                      const Text(
-                        'Модули не найдены.',
-                        style: TextStyle(color: textGrey),
-                      )
-                    else
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: EdgeInsets.zero,
-                        itemCount: _modules.length,
-                        itemBuilder: (context, index) {
-                          final module = _modules[index];
-                          final isLocked = module.status == false || index > 1;
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 24),
-                            child: Row(
-                              children: [
-                                SizedBox(
-                                  width: 44,
-                                  child: Text(
-                                    (index + 1).toString().padLeft(2, '0'),
-                                    style: const TextStyle(
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFFC8CCDB),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        module.name,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                          color: textDark,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            '6:10 мин',
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: isLocked
-                                                  ? textGrey
-                                                  : primaryBlue,
-                                            ),
-                                          ),
-                                          if (!isLocked) ...[
-                                            const SizedBox(width: 4),
-                                            const Icon(
-                                              Icons.check_circle,
-                                              size: 14,
-                                              color: primaryBlue,
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: isLocked
-                                        ? const Color(0xFFD3DCFF)
-                                        : primaryBlue,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    isLocked ? Icons.lock : Icons.play_arrow,
-                                    color: Colors.white,
-                                    size: 24,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                  ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Модуль ${module.orderModule ?? ""}',
+                  style: const TextStyle(color: _textGrey, fontSize: 11, fontWeight: FontWeight.bold),
                 ),
-              ),
+                Text(
+                  module.name,
+                  style: const TextStyle(color: _textDark, fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
 
-      bottomNavigationBar: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.only(
-          left: 24,
-          right: 24,
-          bottom: 32,
-          top: 16,
+Widget _buildActionButton() {
+  // 1. Если пользователь уже записан (есть запись в БД)
+  if (_isEnrolled) {
+    return _buttonTemplate(
+      text: 'Продолжить обучение',
+      onPressed: () {
+        // Здесь логика перехода к первому уроку или последнему открытому
+        // Например, переключение таба на "Плейлист"
+        _tabController.animateTo(1); 
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Переходим к материалам...')),
+        );
+      },
+      isAccent: false, // Можно добавить параметр для смены цвета
+    );
+  }
+
+  // 2. Если пользователь еще не купил курс
+  return _buttonTemplate(
+    text: _isPurchasing ? 'Оформление...' : 'Записаться за ${widget.course.price?.toInt() ?? 0} ₽',
+    onPressed: _isPurchasing ? null : _handlePurchase,
+    isAccent: true,
+  );
+}
+
+// Вспомогательный метод для стилизации кнопок
+Widget _buttonTemplate({
+  required String text, 
+  required VoidCallback? onPressed, 
+  bool isAccent = true
+}) {
+  return Container(
+    width: double.infinity,
+    height: 56,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(16),
+      // Если курс куплен, можно сделать градиент чуть спокойнее (например, только фиолетовый)
+      gradient: LinearGradient(
+        colors: isAccent 
+            ? [_primaryPurple, const Color(0xFFF2C9D4)] 
+            : [_primaryPurple, _primaryPurple.withOpacity(0.8)],
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: _primaryPurple.withOpacity(0.3), 
+          blurRadius: 12, 
+          offset: const Offset(0, 4)
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF0F5),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.star_border,
-                  color: Color(0xFFFF6B00),
-                  size: 28,
-                ),
-                onPressed: () {
-                },
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: SizedBox(
-                height: 60,
-                child: _isEnrolled
-                    ? Container(
-                        alignment: Alignment.center,
-                        child: const Text(
-                          'Вы уже записаны на курс',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      )
-                    : ElevatedButton(
-                        onPressed: (_loading || _isPurchasing) ? null : () async {
-                    final authProvider = Provider.of<AuthProvider>(
-                      context,
-                      listen: false,
-                    );
-                    final currentUser = authProvider.currentUser;
-                    if (currentUser == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Сначала войдите в систему'),
-                        ),
-                      );
-                      return;
-                    }
-
-                    setState(() => _isPurchasing = true);
-                    final success = await SupabaseService().purchaseCourse(
-                      userId: currentUser.id!,
-                      courseId: widget.course.id,
-                      amount: widget.course.price ?? 0,
-                      userEmail: currentUser.email ?? '',
-                      courseName: widget.course.name,
-                    );
-                    setState(() => _isPurchasing = false);
-
-                    if (success) {
-                      setState(() {
-                        _isEnrolled = true;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Курс успешно куплен, чек отправлен на почту',
-                          ),
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Не удалось оформить покупку'),
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: _isPurchasing
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          'Купить',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-          ],
+      ],
+    ),
+    child: ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.transparent,
+        shadowColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 16, 
+          fontWeight: FontWeight.bold, 
+          color: Colors.white 
         ),
       ),
+    ),
+  );
+}
+
+  Future<void> _handlePurchase() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.currentUser == null) return;
+
+    setState(() => _isPurchasing = true);
+    
+    final success = await SupabaseService().purchaseCourse(
+      authProvider.currentUser!.id!,
+      widget.course,
+      authProvider.currentUser!.email!,
     );
+
+    if (mounted) {
+      setState(() {
+        _isPurchasing = false;
+        if (success) _isEnrolled = true;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(success ? 'Вы успешно записаны!' : 'Ошибка при покупке')),
+      );
+    }
   }
 }

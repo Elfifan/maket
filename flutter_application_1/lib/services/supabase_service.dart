@@ -28,6 +28,22 @@ class SupabaseService {
     print('Supabase initialized');
   }
 
+Future<bool> isUserEnrolled(int userId, int courseId) async {
+    try {
+      final response = await _client
+          .from('user_courses')
+          .select()
+          .eq('id_user', userId)
+          .eq('id_courses', courseId)
+          .maybeSingle();
+
+      return response != null;
+    } catch (e) {
+      print('Error checking enrollment: $e');
+      return false;
+    }
+  }
+
   Future<UserModel?> register({
     required String email,
     required String password,
@@ -107,43 +123,31 @@ class SupabaseService {
   }
 
 
-  Future<List<CourseModel>> getCourses({
-    String? search,
-    String? filterCategory,
-  }) async {
-    try {
+Future<List<CourseModel>> getCourses({String? search, String? category}) async {
+  try {
+    // Начинаем запрос к таблице 'courses'
+    var query = _client.from('courses').select();
 
-      var query = _client
-          .from('courses')
-          .select(
-            'id,id_employee,name,description,date_create,price,complexity,status',
-          );
-
-      if (search != null && search.isNotEmpty) {
-        query = query.ilike('name', '%$search%');
-      }
-      if (filterCategory != null &&
-          filterCategory.isNotEmpty &&
-          filterCategory != 'Все' &&
-          filterCategory != 'Мои курсы') {
-        query = query.ilike('name', '%$filterCategory%');
-      }
-
-      final response = await query.order('date_create', ascending: false);
-      print('[SupabaseService] raw response type: ${response.runtimeType}');
-      print('[SupabaseService] raw response content: $response');
-
-      final list = List<Map<String, dynamic>>.from(response as List);
-      print(
-        'Loaded ${list.length} courses (search=$search, filter=$filterCategory)',
-      );
-      return list.map((j) => CourseModel.fromJson(j)).toList();
-    } catch (e, st) {
-      print('Error getting courses: $e');
-      print(st);
-      return [];
+    // Если передан поиск, фильтруем по названию (регистронезависимо)
+    if (search != null && search.isNotEmpty) {
+      query = query.ilike('name', '%$search%');
     }
+
+    // Если передана категория, фильтруем по колонке 'category' 
+    // (Убедитесь, что в вашей таблице в Supabase есть колонка 'category')
+    if (category != null && category.isNotEmpty) {
+      query = query.eq('category', category);
+    }
+
+    final response = await query;
+
+    final List<dynamic> data = response as List<dynamic>;
+    return data.map((json) => CourseModel.fromJson(json)).toList();
+  } catch (e) {
+    print('Error fetching courses: $e');
+    return [];
   }
+}
 
   /// Список курсов, приобретённых пользователем.
   Future<List<CourseModel>> getUserCourses({
@@ -173,23 +177,24 @@ class SupabaseService {
     }
   }
 
-  Future<List<ModuleModel>> getModules(int courseId) async {
-    try {
-      final response = await _client
-          .from('module')
-          .select('id,id_courses,name,order_module,status')
-          .eq('id_courses', courseId)
-          .order('order_module', ascending: true);
+Future<List<Map<String, dynamic>>> getModulesWithSubmodules(int courseId) async {
+  try {
+    // Запрашиваем модули и сразу все связанные подмодули
+    final response = await _client
+        .from('module')
+        .select('''
+          *,
+          submodule (*)
+        ''')
+        .eq('id_courses', courseId)
+        .order('order_module', ascending: true);
 
-      final list = List<Map<String, dynamic>>.from(response);
-      print('Loaded ${list.length} modules for course $courseId');
-      return list.map((j) => ModuleModel.fromJson(j)).toList();
-    } catch (e, st) {
-      print('Error getting modules for course $courseId: $e');
-      print(st);
-      return [];
-    }
+    return List<Map<String, dynamic>>.from(response);
+  } catch (e) {
+    print('Error fetching modules and submodules: $e');
+    return [];
   }
+}
 
 
   Future<bool> hasPurchasedCourse({
@@ -210,81 +215,38 @@ class SupabaseService {
     }
   }
 
-  Future<bool> purchaseCourse({
-    required int userId,
-    required int courseId,
-    required double amount,
-    required String userEmail,
-    required String courseName,
-  }) async {
-    try {
-      await _client.from('transactions').insert({
-        'id_user': userId,
-        'id_courses': courseId,
-        'amount': amount,
-        'payment_status': 'completed',
-      });
-
-      final existing = await _client
-          .from('user_courses')
-          .select('id')
-          .eq('id_user', userId)
-          .eq('id_courses', courseId)
-          .maybeSingle();
-
-      if (existing == null) {
-        await _client.from('user_courses').insert({
-          'id_user': userId,
-          'id_courses': courseId,
-          'purchase_price': amount,
-        });
-      } else {
-        print('[purchaseCourse] Пользователь $userId уже приобрёл курс $courseId, повторная запись пропущена');
-      }
-
-
-      try {
-        await _client.rpc(
-          'send_receipt',
-          params: {'user_id': userId, 'course_id': courseId, 'amount': amount},
-        );
-      } catch (_) {
-      }
-
-
-      if (userEmail.trim().isEmpty || !userEmail.contains('@')) {
-        print('[purchaseCourse] Адрес "$userEmail" некорректен, письмо не отправляется');
-      } else {
-        try {
-          final sent = await _sendEmailReceipt(
-            toEmail: userEmail,
-            courseName: courseName,
-            amount: amount,
-          );
-          if (!sent) {
-            print('[purchaseCourse] _sendEmailReceipt сигнализировал об ошибке');
-          }
-        } catch (e) {
-          print('[purchaseCourse] ошибка при отправке письма: $e');
-        }
-      }
-
-      return true;
-    } catch (e, st) {
-      print('Error during purchase operation: $e');
-      print(st);
-      return false;
-    }
+Future<bool> purchaseCourse(int userId, CourseModel course, String userEmail) async {
+  try {
+    await _client.from('user_courses').insert({
+      'id_user': userId,
+      'id_courses': course.id,
+      'purchase_price': course.price ?? 0.0, 
+      'purchase_date': DateTime.now().toIso8601String(),
+    });
+    
+    await sendEmailReceipt(
+      toEmail: userEmail,
+      courseName: course.name,
+      amount: course.price ?? 0.0,
+    );
+    return true;
+  } catch (e) {
+    print('Ошибка при записи в БД: $e');
+    return false;
   }
+}
 
-  Future<bool> _sendEmailReceipt({
+
+
+Future<bool> sendEmailReceipt({
     required String toEmail,
     required String courseName,
     required double amount,
   }) async {
     try {
+
       const username = 'vergunovcyril@yandex.ru';
-      const password = 'yatdkhfbiiodwnfj';
+      const password = 'yatdkhfbiiodwnfj'; 
 
       final smtpServer = SmtpServer(
         'smtp.yandex.ru',
@@ -294,9 +256,17 @@ class SupabaseService {
         ssl: true,
       );
 
+      // Формирование данных чека
       final date = DateTime.now();
       final dateString = '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
       final orderId = 'TXN-${date.millisecondsSinceEpoch.toString().substring(5)}';
+
+      // Стилистика приложения
+      const primaryPurple = '#A58EFF';
+      const accentPink = '#F2C9D4';
+      const textDark = '#1E1E2E';
+      const textGrey = '#9094A6';
+      const bgGrey = '#F8F9FB';
 
       final htmlContent = '''
       <!DOCTYPE html>
@@ -304,51 +274,57 @@ class SupabaseService {
       <head>
         <meta charset="utf-8">
       </head>
-      <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #FFF0F5; padding: 20px; margin: 0;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: $bgGrey; padding: 20px; margin: 0; -webkit-font-smoothing: antialiased;">
+        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 32px; overflow: hidden; box-shadow: 0 10px 25px rgba(165,142,255,0.1);">
           
-          <div style="background-color: #4561FF; padding: 40px 20px; text-align: center;">
-            <h1 style="margin: 0; color: #ffffff; font-size: 28px;">Успешная покупка!</h1>
-            <p style="margin: 10px 0 0 0; color: #D3DCFF; font-size: 16px;">Спасибо, что выбираете нас</p>
+          <div style="background: linear-gradient(135deg, $primaryPurple 0%, $accentPink 100%); padding: 50px 20px; text-align: center;">
+            <div style="background-color: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 20px; margin: 0 auto 20px auto; line-height: 60px; display: inline-block;">
+               <span style="font-size: 30px;">🎓</span>
+            </div>
+            <h1 style="margin: 20px 0 0 0; color: #ffffff; font-size: 26px; font-weight: bold;">Покупка успешна!</h1>
+            <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px; opacity: 0.9;">Ваш путь в обучении начинается здесь</p>
           </div>
 
-          <div style="padding: 30px 40px;">
-            <p style="font-size: 16px; color: #1E1E2E; margin-bottom: 24px;">
-              Здравствуйте, <strong>$toEmail</strong>!<br><br>
-              Ваша оплата успешно обработана. Доступ к курсу открыт в вашем личном кабинете. Ниже приведены детали транзакции.
+          <div style="padding: 40px;">
+            <p style="font-size: 16px; color: $textDark; line-height: 1.6; margin-bottom: 30px;">
+              Здравствуйте! Ваша оплата курса <strong>«$courseName»</strong> прошла успешно. Мы уже подготовили все материалы в вашем личном кабинете.
             </p>
 
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
-              <tr>
-                <td style="padding: 12px 0; border-bottom: 1px solid #EEEEEE; color: #9094A6; font-size: 14px;">Номер заказа:</td>
-                <td style="padding: 12px 0; border-bottom: 1px solid #EEEEEE; text-align: right; color: #1E1E2E; font-weight: 600; font-size: 14px;">$orderId</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px 0; border-bottom: 1px solid #EEEEEE; color: #9094A6; font-size: 14px;">Дата и время:</td>
-                <td style="padding: 12px 0; border-bottom: 1px solid #EEEEEE; text-align: right; color: #1E1E2E; font-weight: 600; font-size: 14px;">$dateString</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px 0; border-bottom: 1px solid #EEEEEE; color: #9094A6; font-size: 14px;">Наименование:</td>
-                <td style="padding: 12px 0; border-bottom: 1px solid #EEEEEE; text-align: right; color: #1E1E2E; font-weight: 600; font-size: 14px;">$courseName</td>
-              </tr>
-              <tr>
-                <td style="padding: 24px 0 8px 0; color: #1E1E2E; font-size: 18px; font-weight: bold;">Итого:</td>
-                <td style="padding: 24px 0 8px 0; text-align: right; color: #4561FF; font-size: 24px; font-weight: bold;">₽${amount.toStringAsFixed(2)}</td>
-              </tr>
-            </table>
+            <div style="background-color: $bgGrey; border-radius: 24px; padding: 25px; margin-bottom: 30px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: $textGrey; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Заказ</td>
+                  <td style="padding: 8px 0; text-align: right; color: $textDark; font-weight: bold; font-size: 14px;">$orderId</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: $textGrey; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Дата</td>
+                  <td style="padding: 8px 0; text-align: right; color: $textDark; font-weight: bold; font-size: 14px;">$dateString</td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding: 15px 0 10px 0; border-top: 1px solid #E0E0E0; margin-top: 10px;">
+                    <span style="color: $textGrey; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">К оплате</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="color: $primaryPurple; font-size: 32px; font-weight: 800;">
+                    ${amount.toStringAsFixed(0)} <span style="font-size: 20px;">₽</span>
+                  </td>
+                </tr>
+              </table>
+            </div>
 
             <div style="text-align: center;">
-              <a href="#" style="display: inline-block; padding: 14px 32px; background-color: #4561FF; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                Перейти к обучению
+              <a href="https://your-app-link.com" style="display: inline-block; padding: 18px 40px; background: linear-gradient(135deg, $primaryPurple 0%, $accentPink 100%); color: #ffffff; text-decoration: none; border-radius: 16px; font-weight: bold; font-size: 16px;">
+                Начать обучение
               </a>
             </div>
           </div>
 
-          <div style="background-color: #F8F9FA; padding: 20px; text-align: center; border-top: 1px solid #EEEEEE;">
-            <p style="margin: 0; color: #9094A6; font-size: 12px;">
-              Если у вас возникли вопросы, напишите нам на <a href="mailto:support@yourservice.com" style="color: #4561FF; text-decoration: none;">support@yourservice.com</a>
+          <div style="background-color: #ffffff; padding: 30px; text-align: center; border-top: 1px solid $bgGrey;">
+            <p style="margin: 0; color: $textGrey; font-size: 13px;">
+              Есть вопросы? Пишите на <a href="mailto:support@yourservice.com" style="color: $primaryPurple; text-decoration: none; font-weight: bold;">support@yourservice.com</a>
             </p>
-            <p style="margin: 8px 0 0 0; color: #9094A6; font-size: 12px;">
+            <p style="margin: 12px 0 0 0; color: $textGrey; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
               © ${date.year} Учебный сервис. Все права защищены.
             </p>
           </div>
@@ -360,29 +336,21 @@ class SupabaseService {
       final message = Message()
         ..from = Address(username, 'Учебный сервис')
         ..recipients.add(toEmail)
-        ..subject = '🧾 Ваш чек: покупка курса «$courseName»'
+        ..subject = '🧾 Чек по заказу: $courseName'
         ..html = htmlContent;
 
-      print('[Email] Готовится отправка письма на: $toEmail');
-      print('[Email] Попытка подключения к SMTP и отправки...');
-      final sendReport = await send(message, smtpServer).timeout(
+      print('[Email] Отправка стилизованного письма на: $toEmail');
+      
+      // Используем await для реальной отправки
+      await send(message, smtpServer).timeout(
         const Duration(seconds: 15),
-        onTimeout: () {
-          print('[Email] ❌ Timeout при отправке письма');
-          throw Exception('Timeout при отправке письма');
-        },
+        onTimeout: () => throw Exception('Timeout при отправке почты'),
       );
-      print('[Email] ✅ Письмо отправлено: $sendReport');
+      
+      print('[Email] ✅ Письмо успешно доставлено');
       return true;
-    } on MailerException catch (e) {
-      print('[Email] ❌ ОШИБКА MailerException: $e');
-      for (var p in e.problems) {
-        print('[Email] Проблема: ${p.code}: ${p.msg}');
-      }
-      return false;
-    } catch (e, st) {
-      print('[Email] ❌ ОШИБКА при отправке письма: $e');
-      print('[Email] Stacktrace: $st');
+    } catch (e) {
+      print('[Email] ❌ Ошибка: $e');
       return false;
     }
   }

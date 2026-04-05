@@ -1,9 +1,8 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import '../models/course_model.dart';
-import '../services/supabase_service.dart';
 import 'package:provider/provider.dart';
+import '../models/course_model.dart';
 import '../providers/auth_provider.dart';
+import '../services/supabase_service.dart';
 import 'course_profile_screen.dart';
 
 class CoursesScreen extends StatefulWidget {
@@ -14,17 +13,21 @@ class CoursesScreen extends StatefulWidget {
 }
 
 class _CoursesScreenState extends State<CoursesScreen> {
-  final List<CourseModel> _courses = [];
+  final List<CourseModel> _allCourses = [];
+  List<CourseModel> _displayCourses = [];
   bool _loading = false;
-  String _search = '';
-  String _filter = 'Все';
-  int _selectedIndex = 1; 
+  String _activeFilter = 'Все';
 
-  int id = 0;
+  static const Color _textDark = Color(0xFF1E1E2E);
+  static const Color _textGrey = Color(0xFF9094A6);
+  static const Color _primaryPurple = Color(0xFFA58EFF);
+  static const Color _bgLightGrey = Color(0xFFF8F9FB);
 
-  static const Color primaryBlue = Color(0xFF4561FF);
-  static const Color textDark = Color(0xFF1E1E2E);
-  static const Color textGrey = Color(0xFF9094A6);
+  final List<Map<String, dynamic>> _categories = [
+    {'label': 'Все', 'icon': Icons.grid_view_rounded},
+    {'label': 'Python', 'icon': Icons.code_rounded},
+    {'label': 'Frontend', 'icon': Icons.laptop_chromebook_rounded},
+  ];
 
   @override
   void initState() {
@@ -36,331 +39,235 @@ class _CoursesScreenState extends State<CoursesScreen> {
     setState(() => _loading = true);
     await SupabaseService().initialize();
     try {
-      List<CourseModel> list;
-      if (_filter == 'Мои курсы') {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        final currentUser = authProvider.currentUser;
-        if (currentUser != null) {
-          list = await SupabaseService().getUserCourses(userId: currentUser.id!);
-        } else {
-          list = [];
-        }
-      } else {
-        list = await SupabaseService().getCourses(
-          search: _search,
-          filterCategory: _filter,
-        );
-      }
+      final list = await SupabaseService().getCourses();
       setState(() {
-        _courses..clear()..addAll(list);
-        _loading = false;
+        _allCourses.clear();
+        _allCourses.addAll(list);
+        _applyFilter('Все');
       });
     } catch (e) {
-      setState(() => _loading = false);
+      debugPrint('Ошибка: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _onItemTapped(int index) {
+  void _applyFilter(String categoryLabel) {
     setState(() {
-      _selectedIndex = index;
+      _activeFilter = categoryLabel;
+      if (categoryLabel == 'Все') {
+        _displayCourses = List.from(_allCourses);
+      } else {
+        _displayCourses = _allCourses
+            .where((c) => c.name.toLowerCase().contains(categoryLabel.toLowerCase()))
+            .toList();
+      }
     });
-
-    switch (index) {
-      case 0: // Дом
-        // Пока ничего
-        break;
-      case 1: // Курсы
-        // Уже здесь
-        break;
-      case 2: // Поиск
-        // Пока ничего
-        break;
-      case 3: // Сообщения
-        // Пока ничего
-        break;
-      case 4: // Аккаунт
-        Navigator.pushNamed(context, '/home');
-        break;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final userName = authProvider.currentUser?.email?.split('@')[0] ?? 'Кирилл';
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
+      appBar: _buildAppBar(),
+      body: _loading 
+        ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
+        : CustomScrollView( // Используем CustomScrollView для общей прокрутки
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text('Доброе утро,\n$userName',
+                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: _textDark, height: 1.2)),
+                          const SizedBox(width: 8),
+                          const Text('👏', style: TextStyle(fontSize: 26)),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPathBanner(),
+                      const SizedBox(height: 32),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Направления', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark)),
+                          TextButton(onPressed: () {}, child: const Text('См. все', style: TextStyle(color: _primaryPurple, fontWeight: FontWeight.w600))),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Горизонтальные категории
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 45,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) => _buildCategoryChip(_categories[index]['label'], _categories[index]['icon']),
+                  ),
+                ),
+              ),
+
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+                  child: Row(
+                    children: [
+                      const Text('Новые курсы', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark)),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: _bgLightGrey, borderRadius: BorderRadius.circular(8)),
+                        child: const Text('ТОП-10', style: TextStyle(color: _textGrey, fontSize: 11, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Сетка курсов, которая является частью общего списка прокрутки
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.75,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _buildCourseCard(_displayCourses[index]),
+                    childCount: _displayCourses.length,
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 30)), // Отступ снизу
+            ],
+          ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      titleSpacing: 24,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: _textDark, borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.bolt, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 10),
+          const Text('Кодикс', style: TextStyle(color: _textDark, fontSize: 20, fontWeight: FontWeight.bold)),
+        ],
+      ),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(1),
+        child: Container(color: const Color(0xFFEEEEEE), height: 1),
+      ),
+    );
+  }
+
+  Widget _buildPathBanner() {
+    return Container(
+      width: double.infinity,
+      height: 160,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: const LinearGradient(colors: [Color(0xFFBCAFFF), _primaryPurple]),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ТЕКУЩИЙ ПУТЬ', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                SizedBox(height: 6),
+                Text('Путь Fullstack\nразработчика', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, height: 1.2)),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
+                  child: const Text('Продолжить', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                ),
+                const Text('64%', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(String label, IconData icon) {
+    bool isSelected = _activeFilter == label;
+    return GestureDetector(
+      onTap: () => _applyFilter(label),
+      child: Container(
+        margin: const EdgeInsets.only(left: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(color: isSelected ? _primaryPurple : _bgLightGrey, borderRadius: BorderRadius.circular(16)),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: isSelected ? Colors.white : _textDark),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: isSelected ? Colors.white : _textDark, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCourseCard(CourseModel course) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourseProfileScreen(course: course))),
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))]),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Expanded(child: Container(decoration: const BoxDecoration(color: _bgLightGrey, borderRadius: BorderRadius.vertical(top: Radius.circular(24))), child: const Center(child: Icon(Icons.laptop, color: _textGrey)))),
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Курсы ${id}',
-                    style: const TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
-                      color: textDark,
-                    ),
-                  ),
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: const Color(0xFFFFE5E5),
-                    child: ClipOval(
-                      child: Image.network(
-                        'https://api.dicebear.com/7.x/avataaars/png?seed=Felix',
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+                  Text(course.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('12 уроков', style: TextStyle(fontSize: 11, color: _textGrey)),
+                      Text('${course.price?.toInt() ?? 0} ₽', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _primaryPurple)),
+                    ],
                   ),
                 ],
               ),
             ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F7FF),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: TextField(
-                  onChanged: (v) => setState(() => _search = v),
-                  decoration: const InputDecoration(
-                    hintText: 'Найти курс',
-                    hintStyle: TextStyle(color: textGrey),
-                    prefixIcon: Icon(Icons.search, color: textGrey),
-                    suffixIcon: Icon(Icons.tune, color: textGrey),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 15),
-                  ),
-                ),
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-              child: Row(
-                children: [
-                  _buildCategoryCard('Язык', 'lib/assets/images/Frame2.png', const Color(0xFFD3EFFF)),
-                  const SizedBox(width: 16),
-                  _buildCategoryCard('Прог', 'lib/assets/images/Frame.png', const Color(0xFFE8DFFF)),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'Курсы',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textDark),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                children: [
-                  _buildTab('Все'),
-                  _buildTab('Мои курсы'),
-                  _buildTab('Новые'),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                      itemCount: _courses.length,
-                      itemBuilder: (context, index) {
-                        final course = _courses[index];
-                        final rand = Random(course.id);
-                        final durationH = 10 + rand.nextInt(10);
-                        id = _courses.length;
-                        
-                        return GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => CourseProfileScreen(course: course)),
-                          ),
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFD9D9D9),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        course.name,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                          color: textDark,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.person, size: 14, color: textGrey),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            _filter == 'Все' ? 'Программирование' : _filter,
-                                            style: const TextStyle(color: textGrey, fontSize: 13),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            'P${course.price?.toInt() ?? 190}',
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w800,
-                                              color: primaryBlue,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFFFE5E5),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              '$durationH часов',
-                                              style: const TextStyle(
-                                                color: Color(0xFFFF6B00),
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: primaryBlue,
-        unselectedItemColor: textGrey,
-        showUnselectedLabels: true,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Дом'),
-          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Курсы'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Поиск'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Сообщения'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Аккаунт'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryCard(String label, String imagePath, Color color) {
-    return Expanded(
-      child: Container(
-        height: 100,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              right: 0, bottom: 0, top: 0,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(imagePath, fit: BoxFit.cover),
-              ),
-            ),
-            Positioned(
-              left: 16, bottom: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: primaryBlue),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTab(String label) {
-    bool isSelected = _filter == label;
-    return GestureDetector(
-      onTap: () => setState(() {
-        _filter = label;
-        _loadCourses();
-      }),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? primaryBlue : textGrey,
-              ),
-            ),
-            if (isSelected)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                height: 2, width: 20,
-                color: primaryBlue,
-              )
           ],
         ),
       ),
