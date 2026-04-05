@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/services/ai_service.dart'; // Убедитесь, что путь верный
+import 'package:flutter_application_1/services/ai_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
@@ -27,7 +27,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
       _isTyping = true;
     });
 
-    // Отправляем текущее сообщение и историю (без последнего добавленного юзером)
     final response = await _aiService.getAiResponse(
       text, 
       _messages.sublist(0, _messages.length - 1)
