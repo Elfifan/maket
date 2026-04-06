@@ -125,16 +125,14 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
 
 Future<List<CourseModel>> getCourses({String? search, String? category}) async {
   try {
-    // Начинаем запрос к таблице 'courses'
+
     var query = _client.from('courses').select();
 
-    // Если передан поиск, фильтруем по названию (регистронезависимо)
     if (search != null && search.isNotEmpty) {
       query = query.ilike('name', '%$search%');
     }
 
-    // Если передана категория, фильтруем по колонке 'category' 
-    // (Убедитесь, что в вашей таблице в Supabase есть колонка 'category')
+
     if (category != null && category.isNotEmpty) {
       query = query.eq('category', category);
     }
@@ -237,11 +235,9 @@ Future<bool> purchaseCourse(int userId, CourseModel course, String userEmail) as
 }
 
 
-// Добавьте этот метод в класс SupabaseService
 Future<List<AchievementModel>> getUserAchievements(int userId) async {
   try {
-    // Выполняем join таблиц achievements_user и achievement
-    // achievement(*) подтягивает все поля из связанной таблицы, включая 'image'
+
     final response = await _client
         .from('achievements_user')
         .select('achievement (*)')
@@ -249,7 +245,6 @@ Future<List<AchievementModel>> getUserAchievements(int userId) async {
 
     final List<dynamic> data = response as List<dynamic>;
     
-    // Фильтруем пустые записи и преобразуем в список моделей
     return data
         .where((item) => item['achievement'] != null)
         .map((item) => AchievementModel.fromJson(item['achievement']))
