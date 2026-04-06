@@ -237,6 +237,31 @@ Future<bool> purchaseCourse(int userId, CourseModel course, String userEmail) as
 }
 
 
+// Добавьте этот метод в класс SupabaseService
+Future<List<AchievementModel>> getUserAchievements(int userId) async {
+  try {
+    // Выполняем join таблиц achievements_user и achievement
+    // achievement(*) подтягивает все поля из связанной таблицы, включая 'image'
+    final response = await _client
+        .from('achievements_user')
+        .select('achievement (*)')
+        .eq('id_user', userId);
+
+    final List<dynamic> data = response as List<dynamic>;
+    
+    // Фильтруем пустые записи и преобразуем в список моделей
+    return data
+        .where((item) => item['achievement'] != null)
+        .map((item) => AchievementModel.fromJson(item['achievement']))
+        .toList();
+  } catch (e) {
+    print('Error fetching user achievements: $e');
+    return [];
+  }
+}
+
+
+
 
 Future<bool> sendEmailReceipt({
     required String toEmail,

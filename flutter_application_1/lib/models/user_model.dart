@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'dart:convert';
+
 
 class UserModel {
   final int? id;
@@ -51,5 +53,34 @@ class UserModel {
       if (lastEntry != null) 
         'last_entry': lastEntry!.toIso8601String().split('T')[0],
     };
+  }
+}
+
+
+class AchievementModel {
+  final int id;
+  final String? name;
+  final String? description;
+  final String? image; 
+
+  AchievementModel({required this.id, this.name, this.description, this.image});
+
+  Uint8List? get imageBytes {
+    if (image == null || image!.isEmpty) return null;
+    try {
+      return base64Decode(image!);
+    } catch (e) {
+      print("Ошибка декодирования Base64: $e");
+      return null;
+    }
+  }
+
+  factory AchievementModel.fromJson(Map<String, dynamic> json) {
+    return AchievementModel(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      image: json['image'],
+    );
   }
 }

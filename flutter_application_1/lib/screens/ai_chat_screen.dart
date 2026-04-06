@@ -92,8 +92,7 @@ Widget _buildMessageBubble(Map<String, dynamic> msg) {
   bool isUser = msg['role'] == 'user';
   String content = msg['content'];
 
-  // Разбиваем текст на части по маркерам кода ```
-  // Регулярное выражение находит блоки между ```
+
   final parts = content.split(RegExp(r'```'));
 
   return Align(
@@ -104,8 +103,7 @@ Widget _buildMessageBubble(Map<String, dynamic> msg) {
         final part = parts[index].trim();
         if (part.isEmpty) return const SizedBox.shrink();
 
-        // Каждая четная часть (0, 2, 4...) — это обычный текст
-        // Каждая нечетная часть (1, 3, 5...) — это код
+
         bool isCode = index % 2 != 0;
 
         if (isCode) {
@@ -131,9 +129,8 @@ Widget _buildMessageBubble(Map<String, dynamic> msg) {
 }
 
 Widget _buildCodeBlock(String code) {
-  // Очищаем первую строку, если там указано название языка (например, ```python)
   final lines = code.split('\n');
-  String language = 'dart'; // По умолчанию
+  String language = 'dart'; 
   if (lines.isNotEmpty && lines[0].trim().length < 10 && !lines[0].contains(' ')) {
     language = lines[0].trim();
     lines.removeAt(0);
@@ -193,7 +190,7 @@ Widget _buildCodeBlock(String code) {
 
   Widget _buildInputPanel() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 25),
+      padding: const EdgeInsets.fromLTRB(20, 5, 20, 5),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Color(0xFFF1F1F1))),

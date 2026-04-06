@@ -25,7 +25,6 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // IndexedStack позволяет сохранять состояние экранов при переключении
       body: IndexedStack(
         index: _selectedIndex,
         children: _screens,

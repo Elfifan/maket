@@ -3,6 +3,7 @@ class CourseModel {
   final int? idEmployee;
   final String name;
   final String? description;
+  final String? icon;
   final DateTime? dateCreate;
   final double? price;
   final int? complexity;
@@ -13,6 +14,7 @@ class CourseModel {
     this.idEmployee,
     required this.name,
     this.description,
+    this.icon,
     this.dateCreate,
     this.price,
     this.complexity,
@@ -25,6 +27,7 @@ class CourseModel {
       idEmployee: json['id_employee'] as int?,
       name: json['name'] as String,
       description: json['description'] as String?,
+      icon: json['icon'] as String?,
       dateCreate: json['date_create'] != null
           ? DateTime.parse(json['date_create'])
           : null,
