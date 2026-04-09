@@ -238,7 +238,7 @@ Widget _buildModulesList() {
 
 return ListTile(
   contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
-  // Иконка слева: если курс куплен - яркая, если нет - серая
+
   leading: Icon(
     Icons.play_circle_outline, 
     color: _isEnrolled ? const Color(0xFFA58EFF) : Colors.grey, 
@@ -247,10 +247,9 @@ return ListTile(
   title: Text(
     sub['name'] ?? 'Без названия',
     style: TextStyle(
-      color: _isEnrolled ? _textDark : _textGrey, // Текст тускнеет, если не куплено
+      color: _isEnrolled ? _textDark : _textGrey, 
     ),
   ),
-  // ИСПРАВЛЕНИЕ ТУТ: Иконка справа зависит от статуса покупки
   trailing: Icon(
     _isEnrolled ? Icons.arrow_forward_ios_rounded : Icons.lock_outline, 
     size: 16, 
@@ -261,12 +260,17 @@ return ListTile(
       final String? contentUrl = sub['content'];
       
       if (contentUrl != null && contentUrl.isNotEmpty) {
+        final allSubmodules = _flattenSubmodules();
+        final currentIndex = allSubmodules.indexWhere((item) => item['id'] == sub['id']);
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => SubmoduleContentScreen(
               title: sub['name'] ?? 'Урок',
               contentUrl: contentUrl,
+              allSubmodules: allSubmodules,
+              currentIndex: currentIndex,
             ),
           ),
         );
@@ -293,6 +297,21 @@ return ListTile(
     },
   );
 }
+
+  List<Map<String, dynamic>> _flattenSubmodules() {
+    final List<Map<String, dynamic>> result = [];
+    for (final module in _courseStructure) {
+      final subs = module['submodule'] as List<dynamic>?;
+      if (subs != null) {
+        for (final item in subs) {
+          if (item is Map) {
+            result.add(Map<String, dynamic>.from(item));
+          }
+        }
+      }
+    }
+    return result;
+  }
 
   Widget _buildModuleTile(ModuleModel module) {
     return Container(

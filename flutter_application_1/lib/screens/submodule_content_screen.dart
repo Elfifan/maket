@@ -3,17 +3,21 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:video_player/video_player.dart'; // Нужно добавить
-import 'package:chewie/chewie.dart';           // Нужно добавить
+import 'package:video_player/video_player.dart'; 
+import 'package:chewie/chewie.dart';           
 
 class SubmoduleContentScreen extends StatefulWidget {
   final String title;
   final String contentUrl;
+  final List<Map<String, dynamic>>? allSubmodules;
+  final int currentIndex;
 
   const SubmoduleContentScreen({
     super.key,
     required this.title,
     required this.contentUrl,
+    required this.allSubmodules,
+    required this.currentIndex,
   });
 
   @override
@@ -34,7 +38,7 @@ class _SubmoduleContentScreenState extends State<SubmoduleContentScreen> {
 void initState() {
   super.initState();
   
-  // Более надежная проверка: приводим к нижнему регистру и проверяем наличие расширения до знаков вопроса
+
   final String url = widget.contentUrl.toLowerCase();
   _isVideo = url.contains('.mp4') || url.contains('.mov') || url.contains('.avi');
   
@@ -45,30 +49,72 @@ void initState() {
   }
 }
 
+  VideoFormat _detectVideoFormat(String url) {
+    final lower = url.toLowerCase();
+    if (lower.contains('.m3u8') || lower.contains('application/vnd.apple.mpegurl')) {
+      return VideoFormat.hls;
+    }
+    if (lower.contains('.mpd')) {
+      return VideoFormat.dash;
+    }
+    return VideoFormat.other;
+  }
+
   // Инициализация видеоплеера
   Future<void> _initializeVideo() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
-      _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.contentUrl));
+      final uri = Uri.tryParse(widget.contentUrl.trim());
+      if (uri == null || uri.scheme.isEmpty) {
+        throw FormatException('Неверный URL видео');
+      }
+
+      final formatHint = _detectVideoFormat(widget.contentUrl);
+      _videoPlayerController = VideoPlayerController.networkUrl(
+        uri,
+        formatHint: formatHint,
+        httpHeaders: {
+          'User-Agent': 'Mozilla/5.0 (Android) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Mobile Safari/537.36',
+          'Accept': 'video/*,*/*;q=0.8',
+        },
+      );
+
       await _videoPlayerController!.initialize();
+      _videoPlayerController!.setLooping(false);
 
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
         autoPlay: false,
         looping: false,
         aspectRatio: _videoPlayerController!.value.aspectRatio,
-        // Стилизация под цвета вашего приложения
         materialProgressColors: ChewieProgressColors(
           playedColor: const Color(0xFFA58EFF),
           handleColor: const Color(0xFFA58EFF),
           backgroundColor: Colors.grey,
           bufferedColor: Colors.white70,
         ),
+        errorBuilder: (context, errorMessage) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                errorMessage,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          );
+        },
       );
 
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
+      debugPrint('Video init failed: ${widget.contentUrl} / $e');
       setState(() {
         _error = "Ошибка инициализации видео: $e";
         _isLoading = false;
@@ -112,6 +158,40 @@ void initState() {
     super.dispose();
   }
 
+  bool get _hasNextSubmodule {
+    return widget.allSubmodules != null && widget.currentIndex >= 0 && widget.currentIndex + 1 < widget.allSubmodules!.length;
+  }
+
+  Map<String, dynamic>? get _nextSubmodule {
+    if (!_hasNextSubmodule) return null;
+    return widget.allSubmodules![widget.currentIndex + 1];
+  }
+
+  void _goToNextSubmodule() {
+    final next = _nextSubmodule;
+    if (next == null) return;
+
+    final nextContentUrl = next['content'] as String?;
+    if (nextContentUrl == null || nextContentUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Содержимое следующего урока недоступно')),
+      );
+      return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SubmoduleContentScreen(
+          title: next['name'] ?? 'Следующий урок',
+          contentUrl: nextContentUrl,
+          allSubmodules: widget.allSubmodules,
+          currentIndex: widget.currentIndex + 1,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -127,9 +207,34 @@ void initState() {
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFA58EFF)))
           : _error != null
               ? Center(child: Text(_error!))
-              : _isVideo 
-                  ? _buildVideoUI() 
-                  : _buildMarkdownUI(),
+              : Column(
+                  children: [
+                    Expanded(
+                      child: _isVideo ? _buildVideoUI() : _buildMarkdownUI(),
+                    ),
+                    if (_hasNextSubmodule)
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFA58EFF),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: _goToNextSubmodule,
+                            child: Text(
+                              'Следующий: ${_nextSubmodule?['name'] ?? 'урок'}',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
     );
   }
 
