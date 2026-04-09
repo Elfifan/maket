@@ -4,20 +4,26 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart'; 
-import 'package:chewie/chewie.dart';           
+import 'package:chewie/chewie.dart';
+import '../models/test_model.dart';
+import 'tests_screen.dart';
 
 class SubmoduleContentScreen extends StatefulWidget {
   final String title;
   final String contentUrl;
+  final int submoduleId;
   final List<Map<String, dynamic>>? allSubmodules;
   final int currentIndex;
+  final Map<int, List<TestModel>>? submoduleTests;
 
   const SubmoduleContentScreen({
     super.key,
     required this.title,
     required this.contentUrl,
+    required this.submoduleId,
     required this.allSubmodules,
     required this.currentIndex,
+    this.submoduleTests,
   });
 
   @override
@@ -36,19 +42,17 @@ class _SubmoduleContentScreenState extends State<SubmoduleContentScreen> {
 
 @override
 void initState() {
-  super.initState();
-  
+    super.initState();
 
-  final String url = widget.contentUrl.toLowerCase();
-  _isVideo = url.contains('.mp4') || url.contains('.mov') || url.contains('.avi');
-  
-  if (_isVideo) {
-    _initializeVideo();
-  } else {
-    _fetchMarkdown();
+    final String url = widget.contentUrl.toLowerCase();
+    _isVideo = url.contains('.mp4') || url.contains('.mov') || url.contains('.avi');
+
+    if (_isVideo) {
+      _initializeVideo();
+    } else {
+      _fetchMarkdown();
+    }
   }
-}
-
   VideoFormat _detectVideoFormat(String url) {
     final lower = url.toLowerCase();
     if (lower.contains('.m3u8') || lower.contains('application/vnd.apple.mpegurl')) {
@@ -168,6 +172,25 @@ void initState() {
   }
 
   void _goToNextSubmodule() {
+    // Сначала проверяем, есть ли тесты для текущего подмодуля
+    final tests = widget.submoduleTests?[widget.submoduleId];
+    if (tests != null && tests.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TestsScreen(
+            tests: tests,
+            submoduleName: widget.title,
+            allSubmodules: widget.allSubmodules,
+            currentIndex: widget.currentIndex,
+            submoduleTests: widget.submoduleTests,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Если тестов нет, переходим к следующему подмодулю
     final next = _nextSubmodule;
     if (next == null) return;
 
@@ -185,8 +208,10 @@ void initState() {
         builder: (context) => SubmoduleContentScreen(
           title: next['name'] ?? 'Следующий урок',
           contentUrl: nextContentUrl,
+          submoduleId: next['id'] as int,
           allSubmodules: widget.allSubmodules,
           currentIndex: widget.currentIndex + 1,
+          submoduleTests: widget.submoduleTests,
         ),
       ),
     );
@@ -210,7 +235,15 @@ void initState() {
               : Column(
                   children: [
                     Expanded(
-                      child: _isVideo ? _buildVideoUI() : _buildMarkdownUI(),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _isVideo ? _buildVideoUI() : _buildMarkdownUI(),
+                          ],
+                        ),
+                      ),
                     ),
                     if (_hasNextSubmodule)
                       Padding(
@@ -268,6 +301,8 @@ void initState() {
     return Markdown(
       data: _markdownContent,
       selectable: true,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       onTapLink: (text, href, title) async {
         if (href != null) {
           final url = Uri.parse(href);

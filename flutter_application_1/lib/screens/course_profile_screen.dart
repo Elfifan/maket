@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/course_model.dart';
 import '../models/module_model.dart';
+import '../models/test_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/supabase_service.dart';
 import 'submodule_content_screen.dart';
+import 'tests_screen.dart';
 
 class CourseProfileScreen extends StatefulWidget {
   final CourseModel course;
@@ -17,6 +19,7 @@ class CourseProfileScreen extends StatefulWidget {
 
 class _CourseProfileScreenState extends State<CourseProfileScreen> with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _courseStructure = [];
+  Map<int, List<TestModel>> _submoduleTests = {};
   bool _loading = false;
   bool _isPurchasing = false;
   bool _isEnrolled = false;
@@ -54,6 +57,31 @@ Future<void> _loadModules() async {
     final data = await SupabaseService().getModulesWithSubmodules(widget.course.id);
     setState(() {
       _courseStructure = data;
+    });
+
+    // Загружаем тесты для каждого подмодуля
+    final Map<int, List<TestModel>> testsMap = {};
+    for (final module in _courseStructure) {
+      final submodules = module['submodule'] as List<dynamic>? ?? [];
+      for (final sub in submodules) {
+        if (sub is Map<String, dynamic>) {
+          final submoduleId = sub['id'] as int?;
+          if (submoduleId != null) {
+            try {
+              final tests = await SupabaseService().getTestsBySubmodule(submoduleId);
+              if (tests.isNotEmpty) {
+                testsMap[submoduleId] = tests;
+              }
+            } catch (e) {
+              // Игнорируем ошибки загрузки тестов для отдельных подмодулей
+            }
+          }
+        }
+      }
+    }
+
+    setState(() {
+      _submoduleTests = testsMap;
       _loading = false;
     });
   } catch (e) {
@@ -205,6 +233,8 @@ Widget _buildModulesList() {
   if (_loading) return const Center(child: CircularProgressIndicator());
   if (_courseStructure.isEmpty) return const Text("Материалы курса скоро появятся");
 
+  final allSubmodules = _flattenSubmodules();
+
   return ListView.builder(
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
@@ -233,63 +263,122 @@ Widget _buildModulesList() {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             subtitle: Text("${submodules.length} уроков", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-            children: submodules.map((sub) {
-              // Находим внутри ListView.builder -> itemBuilder -> submodules.map((sub) { ... })
+            children: submodules.expand((sub) {
+              final List<Widget> items = [];
 
-return ListTile(
-  contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
+              // Добавляем подмодуль
+              items.add(ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
+                leading: Icon(
+                  Icons.play_circle_outline, 
+                  color: _isEnrolled ? const Color(0xFFA58EFF) : Colors.grey, 
+                  size: 20
+                ),
+                title: Text(
+                  sub['name'] ?? 'Без названия',
+                  style: TextStyle(
+                    color: _isEnrolled ? _textDark : _textGrey, 
+                  ),
+                ),
+                trailing: Icon(
+                  _isEnrolled ? Icons.arrow_forward_ios_rounded : Icons.lock_outline, 
+                  size: 16, 
+                  color: Colors.grey
+                ), 
+                onTap: () {
+                  if (_isEnrolled) {
+                    final String? contentUrl = sub['content'];
+                    final int? submoduleId = sub['id'] is int ? sub['id'] as int : int.tryParse(sub['id'].toString());
+                    
+                    if (contentUrl != null && contentUrl.isNotEmpty && submoduleId != null) {
+                      final allSubmodules = _flattenSubmodules();
+                      final currentIndex = allSubmodules.indexWhere((item) => item['id'] == submoduleId);
 
-  leading: Icon(
-    Icons.play_circle_outline, 
-    color: _isEnrolled ? const Color(0xFFA58EFF) : Colors.grey, 
-    size: 20
-  ),
-  title: Text(
-    sub['name'] ?? 'Без названия',
-    style: TextStyle(
-      color: _isEnrolled ? _textDark : _textGrey, 
-    ),
-  ),
-  trailing: Icon(
-    _isEnrolled ? Icons.arrow_forward_ios_rounded : Icons.lock_outline, 
-    size: 16, 
-    color: Colors.grey
-  ), 
-  onTap: () {
-    if (_isEnrolled) {
-      final String? contentUrl = sub['content'];
-      
-      if (contentUrl != null && contentUrl.isNotEmpty) {
-        final allSubmodules = _flattenSubmodules();
-        final currentIndex = allSubmodules.indexWhere((item) => item['id'] == sub['id']);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SubmoduleContentScreen(
+                            title: sub['name'] ?? 'Урок',
+                            contentUrl: contentUrl,
+                            submoduleId: submoduleId,
+                            allSubmodules: allSubmodules,
+                            currentIndex: currentIndex,
+                            submoduleTests: _submoduleTests,
+                          ),
+                        ),
+                      );
+                    } else if (contentUrl != null && contentUrl.isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Не удалось определить ID подмодуля для тестов')),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Контент для этого урока еще не загружен')),
+                      );
+                    }
+                  } else {
+                    // Сообщение, если пользователь пытается открыть закрытый курс
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Сначала необходимо купить курс'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                },
+              ));
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SubmoduleContentScreen(
-              title: sub['name'] ?? 'Урок',
-              contentUrl: contentUrl,
-              allSubmodules: allSubmodules,
-              currentIndex: currentIndex,
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Контент для этого урока еще не загружен')),
-        );
-      }
-    } else {
-      // Сообщение, если пользователь пытается открыть закрытый курс
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Сначала необходимо купить курс'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    }
-  },
-);
+              // Добавляем тесты для этого подмодуля, если они есть
+              final int? submoduleId = sub['id'] is int ? sub['id'] as int : int.tryParse(sub['id'].toString());
+              final tests = submoduleId != null ? _submoduleTests[submoduleId] : null;
+              if (tests != null && tests.isNotEmpty) {
+                items.add(ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
+                  leading: Icon(
+                    Icons.quiz, 
+                    color: _isEnrolled ? const Color(0xFFA58EFF) : Colors.grey, 
+                    size: 20
+                  ),
+                  title: Text(
+                    'Тесты (${tests.length})',
+                    style: TextStyle(
+                      color: _isEnrolled ? _textDark : _textGrey, 
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  trailing: Icon(
+                    _isEnrolled ? Icons.arrow_forward_ios_rounded : Icons.lock_outline, 
+                    size: 16, 
+                    color: Colors.grey
+                  ), 
+                  onTap: () {
+                    if (_isEnrolled) {
+                      final currentIndex = allSubmodules.indexWhere((item) => item['id'] == submoduleId);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TestsScreen(
+                            tests: tests,
+                            submoduleName: sub['name'] ?? 'Подмодуль',
+                            allSubmodules: allSubmodules,
+                            currentIndex: currentIndex,
+                            submoduleTests: _submoduleTests,
+                          ),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Сначала необходимо купить курс'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                    }
+                  },
+                ));
+              }
+
+              return items;
             }).toList(),
           ),
         ),
@@ -305,49 +394,17 @@ return ListTile(
       if (subs != null) {
         for (final item in subs) {
           if (item is Map) {
-            result.add(Map<String, dynamic>.from(item));
+            final normalized = Map<String, dynamic>.from(item);
+            // Нормализуем id к int
+            if (normalized['id'] != null) {
+              normalized['id'] = normalized['id'] is int ? normalized['id'] : int.tryParse(normalized['id'].toString());
+            }
+            result.add(normalized);
           }
         }
       }
     }
     return result;
-  }
-
-  Widget _buildModuleTile(ModuleModel module) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _bgLightGrey,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: 40, width: 40,
-            decoration: const BoxDecoration(color: Color(0xFFF0EBFF), shape: BoxShape.circle),
-            child: const Icon(Icons.play_arrow_rounded, color: _primaryPurple),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Модуль ${module.orderModule ?? ""}',
-                  style: const TextStyle(color: _textGrey, fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  module.name,
-                  style: const TextStyle(color: _textDark, fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
 Widget _buildActionButton() {

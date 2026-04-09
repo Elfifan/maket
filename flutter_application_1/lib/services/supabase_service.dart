@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 import '../models/course_model.dart';
 import '../models/module_model.dart';
+import '../models/test_model.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -175,24 +176,65 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
     }
   }
 
-Future<List<Map<String, dynamic>>> getModulesWithSubmodules(int courseId) async {
-  try {
-    // Запрашиваем модули и сразу все связанные подмодули
-    final response = await _client
-        .from('module')
-        .select('''
-          *,
-          submodule (*)
-        ''')
-        .eq('id_courses', courseId)
-        .order('order_module', ascending: true);
+  Future<List<Map<String, dynamic>>> getModulesWithSubmodules(int courseId) async {
+    try {
+      // Запрашиваем модули и сразу все связанные подмодули
+      final response = await _client
+          .from('module')
+          .select('''
+            *,
+            submodule (*)
+          ''')
+          .eq('id_courses', courseId)
+          .order('order_module', ascending: true);
 
-    return List<Map<String, dynamic>>.from(response);
-  } catch (e) {
-    print('Error fetching modules and submodules: $e');
-    return [];
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error fetching modules and submodules: $e');
+      return [];
+    }
   }
-}
+
+  Future<List<TestModel>> getTestsBySubmodule(int submoduleId) async {
+    try {
+      final response = await _client
+          .from('test')
+          .select()
+          .eq('id_submodule', submoduleId)
+          .order('id', ascending: true);
+
+      final tests = List<Map<String, dynamic>>.from(response)
+          .map((json) => TestModel.fromJson(json))
+          .toList();
+
+      if (tests.isNotEmpty) {
+        return tests;
+      }
+    } catch (e) {
+      print('Direct test query failed: $e');
+    }
+
+    try {
+      final joinResponse = await _client
+          .from('submodule_test')
+          .select('test(*)')
+          .eq('id_submodule', submoduleId)
+          .order('order_test', ascending: true);
+
+      final rows = List<Map<String, dynamic>>.from(joinResponse);
+      final tests = <TestModel>[];
+      for (final row in rows) {
+        final testData = row['test'];
+        if (testData is Map<String, dynamic>) {
+          tests.add(TestModel.fromJson(testData));
+        }
+      }
+      return tests;
+    } catch (e) {
+      print('Join test query failed: $e');
+      return [];
+    }
+  }
 
 
   Future<bool> hasPurchasedCourse({
