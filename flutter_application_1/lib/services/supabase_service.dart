@@ -178,6 +178,7 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
 
   Future<List<Map<String, dynamic>>> getModulesWithSubmodules(int courseId) async {
     try {
+      print('Querying modules for course $courseId');
       // Запрашиваем модули и сразу все связанные подмодули
       final response = await _client
           .from('module')
@@ -187,6 +188,11 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
           ''')
           .eq('id_courses', courseId)
           .order('order_module', ascending: true);
+
+      print('Modules query result: ${response.length} items');
+      for (var module in response) {
+        print('Module: ${module['name']}, submodules: ${(module['submodule'] as List?)?.length ?? 0}');
+      }
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -414,6 +420,103 @@ Future<bool> sendEmailReceipt({
     } catch (e) {
       print('[Email] ❌ Ошибка: $e');
       return false;
+    }
+  }
+
+  // Сохранение прогресса подмодуля
+  Future<void> saveSubmoduleProgress(int userId, int submoduleId) async {
+    try {
+      // Проверяем, существует ли уже запись
+      final existing = await _client
+          .from('user_submodule_progress')
+          .select('id')
+          .eq('id_user', userId)
+          .eq('id_submodule', submoduleId)
+          .maybeSingle();
+
+      if (existing == null) {
+        // Создаем новую запись
+        await _client.from('user_submodule_progress').insert({
+          'id_user': userId,
+          'id_submodule': submoduleId,
+          'is_completed': true,
+          'completed_at': DateTime.now().toIso8601String(),
+        });
+        print('Submodule progress saved: user $userId, submodule $submoduleId');
+      } else {
+        // Обновляем существующую
+        await _client
+            .from('user_submodule_progress')
+            .update({
+              'is_completed': true,
+              'completed_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id_user', userId)
+            .eq('id_submodule', submoduleId);
+        print('Submodule progress updated: user $userId, submodule $submoduleId');
+      }
+    } catch (e) {
+      print('Error saving submodule progress: $e');
+      throw e;
+    }
+  }
+
+  // Сохранение результатов теста
+  Future<void> saveTestResult(int userId, int submoduleId, int numberTests, int numberCorrectAnswers, bool isCorrect) async {
+    try {
+      await _client.from('student_test_result').insert({
+        'id_user': userId,
+        'id_submodule': submoduleId,
+        'number_tests': numberTests,
+        'number_correct_answers': numberCorrectAnswers,
+        'is_correct': isCorrect,
+        'date_completed': DateTime.now().toIso8601String(),
+      });
+      print('Test result saved: user $userId, submodule $submoduleId, correct $numberCorrectAnswers/$numberTests');
+    } catch (e) {
+      print('Error saving test result: $e');
+      throw e;
+    }
+  }
+
+  // Получение прогресса подмодулей для пользователя
+  Future<Set<int>> getCompletedSubmodules(int userId) async {
+    try {
+      final response = await _client
+          .from('user_submodule_progress')
+          .select('id_submodule')
+          .eq('id_user', userId)
+          .eq('is_completed', true);
+
+      final completedIds = List<Map<String, dynamic>>.from(response)
+          .map((row) => row['id_submodule'] as int)
+          .toSet();
+
+      print('Completed submodules for user $userId: $completedIds');
+      return completedIds;
+    } catch (e) {
+      print('Error fetching completed submodules: $e');
+      return {};
+    }
+  }
+
+  // Получение пройденных тестов для подмодулей
+  Future<Set<int>> getCompletedTestSubmodules(int userId) async {
+    try {
+      final response = await _client
+          .from('student_test_result')
+          .select('id_submodule')
+          .eq('id_user', userId);
+
+      final completedIds = List<Map<String, dynamic>>.from(response)
+          .map((row) => row['id_submodule'] as int)
+          .toSet();
+
+      print('Completed test submodules for user $userId: $completedIds');
+      return completedIds;
+    } catch (e) {
+      print('Error fetching completed test submodules: $e');
+      return {};
     }
   }
 }

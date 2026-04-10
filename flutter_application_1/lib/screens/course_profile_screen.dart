@@ -17,9 +17,11 @@ class CourseProfileScreen extends StatefulWidget {
   State<CourseProfileScreen> createState() => _CourseProfileScreenState();
 }
 
-class _CourseProfileScreenState extends State<CourseProfileScreen> with SingleTickerProviderStateMixin {
+class _CourseProfileScreenState extends State<CourseProfileScreen> {
   List<Map<String, dynamic>> _courseStructure = [];
   Map<int, List<TestModel>> _submoduleTests = {};
+  Set<int> _completedSubmodules = {};
+  Set<int> _completedTestSubmodules = {};
   bool _loading = false;
   bool _isPurchasing = false;
   bool _isEnrolled = false;
@@ -30,12 +32,9 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> with SingleTi
   static const Color _primaryPurple = Color(0xFFA58EFF);
   static const Color _bgLightGrey = Color(0xFFF8F9FB);
 
-  late TabController _tabController;
-
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _loadModules();
     _checkEnrollment();
   }
@@ -52,17 +51,22 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> with SingleTi
   }
 
 Future<void> _loadModules() async {
-  setState(() => _loading = true);
+  if (mounted) setState(() => _loading = true);
   try {
+    print('Loading modules for course ${widget.course.id}');
     final data = await SupabaseService().getModulesWithSubmodules(widget.course.id);
-    setState(() {
-      _courseStructure = data;
-    });
+    print('Loaded ${data.length} modules');
+    if (mounted) {
+      setState(() {
+        _courseStructure = data;
+      });
+    }
 
     // Загружаем тесты для каждого подмодуля
     final Map<int, List<TestModel>> testsMap = {};
     for (final module in _courseStructure) {
       final submodules = module['submodule'] as List<dynamic>? ?? [];
+      print('Module ${module['name']} has ${submodules.length} submodules');
       for (final sub in submodules) {
         if (sub is Map<String, dynamic>) {
           final submoduleId = sub['id'] as int?;
@@ -71,8 +75,10 @@ Future<void> _loadModules() async {
               final tests = await SupabaseService().getTestsBySubmodule(submoduleId);
               if (tests.isNotEmpty) {
                 testsMap[submoduleId] = tests;
+                print('Loaded ${tests.length} tests for submodule $submoduleId');
               }
             } catch (e) {
+              print('Error loading tests for submodule $submoduleId: $e');
               // Игнорируем ошибки загрузки тестов для отдельных подмодулей
             }
           }
@@ -80,12 +86,30 @@ Future<void> _loadModules() async {
       }
     }
 
-    setState(() {
-      _submoduleTests = testsMap;
-      _loading = false;
-    });
+    // Загружаем прогресс пользователя
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.currentUser != null) {
+      final completedSubmodules = await SupabaseService().getCompletedSubmodules(authProvider.currentUser!.id!);
+      final completedTestSubmodules = await SupabaseService().getCompletedTestSubmodules(authProvider.currentUser!.id!);
+      
+      if (mounted) {
+        setState(() {
+          _completedSubmodules = completedSubmodules;
+          _completedTestSubmodules = completedTestSubmodules;
+        });
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _submoduleTests = testsMap;
+        _loading = false;
+      });
+    }
+    print('Modules loading completed');
   } catch (e) {
-    setState(() => _loading = false);
+    print('Error in _loadModules: $e');
+    if (mounted) setState(() => _loading = false);
   }
 }
 
@@ -106,12 +130,23 @@ Future<void> _loadModules() async {
                 
                 const SizedBox(height: 24),
                 
-                // 2. Табы (О курсе / Плейлист)
-                _buildTabBar(),
+                // 2. Описание курса
+                if (widget.course.description != null && widget.course.description!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      widget.course.description!,
+                      style: const TextStyle(
+                        color: _textDark,
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
                 
                 const SizedBox(height: 32),
                 
-                // 3. Контент в зависимости от выбранного таба
+                // 3. Список модулей
                 _loading 
                   ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
                   : _buildModulesList(),
@@ -204,36 +239,13 @@ Future<void> _loadModules() async {
     );
   }
 
-  Widget _buildTabBar() {
-    return Container(
-      height: 50,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: _bgLightGrey,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        dividerColor: Colors.transparent,
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicator: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)],
-        ),
-        labelColor: _textDark,
-        unselectedLabelColor: _textGrey,
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        tabs: const [Tab(text: 'О курсе'), Tab(text: 'Плейлист')],
-      ),
-    );
-  }
-
-Widget _buildModulesList() {
+  Widget _buildModulesList() {
+  print('_buildModulesList called, loading: $_loading, courseStructure length: ${_courseStructure.length}');
   if (_loading) return const Center(child: CircularProgressIndicator());
   if (_courseStructure.isEmpty) return const Text("Материалы курса скоро появятся");
 
   final allSubmodules = _flattenSubmodules();
+  print('All submodules count: ${allSubmodules.length}');
 
   return ListView.builder(
     shrinkWrap: true,
@@ -242,6 +254,7 @@ Widget _buildModulesList() {
     itemBuilder: (context, index) {
       final module = _courseStructure[index];
       final List submodules = module['submodule'] ?? [];
+      print('Building module ${module['name']} with ${submodules.length} submodules');
 
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -267,11 +280,14 @@ Widget _buildModulesList() {
               final List<Widget> items = [];
 
               // Добавляем подмодуль
+              final int? submoduleId = sub['id'] is int ? sub['id'] as int : int.tryParse(sub['id'].toString());
+              final bool isSubmoduleCompleted = submoduleId != null && _completedSubmodules.contains(submoduleId);
+              
               items.add(ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
                 leading: Icon(
-                  Icons.play_circle_outline, 
-                  color: _isEnrolled ? const Color(0xFFA58EFF) : Colors.grey, 
+                  isSubmoduleCompleted ? Icons.check_circle : Icons.play_circle_outline, 
+                  color: isSubmoduleCompleted ? Colors.green : (_isEnrolled ? const Color(0xFFA58EFF) : Colors.grey), 
                   size: 20
                 ),
                 title: Text(
@@ -329,14 +345,15 @@ Widget _buildModulesList() {
               ));
 
               // Добавляем тесты для этого подмодуля, если они есть
-              final int? submoduleId = sub['id'] is int ? sub['id'] as int : int.tryParse(sub['id'].toString());
               final tests = submoduleId != null ? _submoduleTests[submoduleId] : null;
               if (tests != null && tests.isNotEmpty) {
+                final bool isTestCompleted = submoduleId != null && _completedTestSubmodules.contains(submoduleId);
+                
                 items.add(ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
                   leading: Icon(
-                    Icons.quiz, 
-                    color: _isEnrolled ? const Color(0xFFA58EFF) : Colors.grey, 
+                    isTestCompleted ? Icons.check_circle : Icons.quiz, 
+                    color: isTestCompleted ? Colors.green : (_isEnrolled ? const Color(0xFFA58EFF) : Colors.grey), 
                     size: 20
                   ),
                   title: Text(
@@ -412,16 +429,8 @@ Widget _buildActionButton() {
   if (_isEnrolled) {
     return _buttonTemplate(
       text: 'Продолжить обучение',
-      onPressed: () {
-        // Здесь логика перехода к первому уроку или последнему открытому
-        // Например, переключение таба на "Плейлист"
-        _tabController.animateTo(1); 
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Переходим к материалам...')),
-        );
-      },
-      isAccent: false, // Можно добавить параметр для смены цвета
+      onPressed: _continueLearning,
+      isAccent: false,
     );
   }
 
@@ -499,5 +508,62 @@ Widget _buttonTemplate({
         SnackBar(content: Text(success ? 'Вы успешно записаны!' : 'Ошибка при покупке')),
       );
     }
+  }
+
+  void _continueLearning() {
+    final allSubmodules = _flattenSubmodules();
+    
+    for (final submodule in allSubmodules) {
+      final submoduleId = submodule['id'] as int?;
+      if (submoduleId == null) continue;
+      
+      // Проверяем, пройден ли подмодуль
+      if (!_completedSubmodules.contains(submoduleId)) {
+        // Подмодуль не пройден - открываем его
+        final contentUrl = submodule['content'] as String?;
+        if (contentUrl != null && contentUrl.isNotEmpty) {
+          final currentIndex = allSubmodules.indexOf(submodule);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SubmoduleContentScreen(
+                title: submodule['name'] ?? 'Урок',
+                contentUrl: contentUrl,
+                submoduleId: submoduleId,
+                allSubmodules: allSubmodules,
+                currentIndex: currentIndex,
+                submoduleTests: _submoduleTests,
+              ),
+            ),
+          );
+          return;
+        }
+      }
+      
+      // Проверяем, пройдены ли тесты для этого подмодуля
+      final tests = _submoduleTests[submoduleId];
+      if (tests != null && tests.isNotEmpty && !_completedTestSubmodules.contains(submoduleId)) {
+        // Тесты не пройдены - открываем их
+        final currentIndex = allSubmodules.indexOf(submodule);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TestsScreen(
+              tests: tests,
+              submoduleName: submodule['name'] ?? 'Подмодуль',
+              allSubmodules: allSubmodules,
+              currentIndex: currentIndex,
+              submoduleTests: _submoduleTests,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    
+    // Все подмодули и тесты пройдены
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Поздравляем! Вы завершили курс!')),
+    );
   }
 }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/test_model.dart';
+import '../providers/auth_provider.dart';
+import '../services/supabase_service.dart';
 import 'submodule_content_screen.dart';
 
 class TestsScreen extends StatefulWidget {
@@ -53,7 +56,32 @@ class _TestsScreenState extends State<TestsScreen> {
     }
   }
 
-  void _showResults() {
+  void _showResults() async {
+    // Сохраняем результат теста
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.currentUser != null) {
+      try {
+        // Определяем submoduleId - берем из первого теста или из параметров
+        int submoduleId = widget.tests.isNotEmpty ? (widget.tests[0].submoduleId ?? 0) : 0;
+        if (submoduleId == 0 && widget.allSubmodules != null && widget.currentIndex >= 0 && widget.currentIndex < widget.allSubmodules!.length) {
+          submoduleId = widget.allSubmodules![widget.currentIndex]['id'] as int;
+        }
+
+        if (submoduleId > 0) {
+          await SupabaseService().saveTestResult(
+            authProvider.currentUser!.id!,
+            submoduleId,
+            widget.tests.length,
+            _correctAnswers,
+            _correctAnswers >= (widget.tests.length / 2).ceil(), // isCorrect - 50% и более правильных ответов
+          );
+        }
+      } catch (e) {
+        print('Error saving test result: $e');
+        // Продолжаем показывать результаты, даже если сохранение не удалось
+      }
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,

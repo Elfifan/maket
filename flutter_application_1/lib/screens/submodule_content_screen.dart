@@ -5,7 +5,10 @@ import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart'; 
 import 'package:chewie/chewie.dart';
+import 'package:provider/provider.dart';
 import '../models/test_model.dart';
+import '../providers/auth_provider.dart';
+import '../services/supabase_service.dart';
 import 'tests_screen.dart';
 
 class SubmoduleContentScreen extends StatefulWidget {
@@ -171,7 +174,18 @@ void initState() {
     return widget.allSubmodules![widget.currentIndex + 1];
   }
 
-  void _goToNextSubmodule() {
+  void _goToNextSubmodule() async {
+    // Сохраняем прогресс текущего подмодуля
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.currentUser != null) {
+      try {
+        await SupabaseService().saveSubmoduleProgress(authProvider.currentUser!.id!, widget.submoduleId);
+      } catch (e) {
+        print('Error saving submodule progress: $e');
+        // Продолжаем, даже если сохранение не удалось
+      }
+    }
+
     // Сначала проверяем, есть ли тесты для текущего подмодуля
     final tests = widget.submoduleTests?[widget.submoduleId];
     if (tests != null && tests.isNotEmpty) {
