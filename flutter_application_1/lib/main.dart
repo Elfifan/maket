@@ -8,6 +8,7 @@ import 'screens/onboarding_screen.dart';
 import 'screens/courses_screen.dart'; 
 import 'dart:ui';
 import 'dart:io';
+import 'package:google_fonts/google_fonts.dart';
 
 // 2. Добавляем класс для игнорирования ошибок сертификатов
 class MyHttpOverrides extends HttpOverrides {
@@ -40,6 +41,7 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.blue,
           visualDensity: VisualDensity.adaptivePlatformDensity,
           scaffoldBackgroundColor: Colors.white,
+          textTheme: GoogleFonts.robotoTextTheme(),
         ),
         home: const InitialScreen(),
         routes: {

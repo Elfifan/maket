@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/course_model.dart';
-import '../models/module_model.dart';
 import '../models/test_model.dart';
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
+import '../services/certificate_service.dart';
 import '../services/supabase_service.dart';
 import 'submodule_content_screen.dart';
 import 'tests_screen.dart';
@@ -25,12 +26,12 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
   bool _loading = false;
   bool _isPurchasing = false;
   bool _isEnrolled = false;
+  bool _hasCertificate = false;
 
   // Константы дизайна
   static const Color _textDark = Color(0xFF1E1E2E);
   static const Color _textGrey = Color(0xFF9094A6);
   static const Color _primaryPurple = Color(0xFFA58EFF);
-  static const Color _bgLightGrey = Color(0xFFF8F9FB);
 
   @override
   void initState() {
@@ -50,68 +51,132 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
     if (mounted) setState(() => _isEnrolled = enrolled);
   }
 
-Future<void> _loadModules() async {
-  if (mounted) setState(() => _loading = true);
-  try {
-    print('Loading modules for course ${widget.course.id}');
-    final data = await SupabaseService().getModulesWithSubmodules(widget.course.id);
-    print('Loaded ${data.length} modules');
-    if (mounted) {
-      setState(() {
-        _courseStructure = data;
-      });
+  Future<void> _checkAndGenerateCertificate(UserModel user) async {
+    // Проверяем, есть ли уже сертификат и сразу возвращаем существующий
+    final existingCertificate = await CertificateService().getCertificate(user.id!, widget.course.id);
+    if (existingCertificate != null) {
+      if (mounted) setState(() => _hasCertificate = true);
+      return;
     }
 
-    // Загружаем тесты для каждого подмодуля
-    final Map<int, List<TestModel>> testsMap = {};
+    // Получаем все подмодули курса
+    final allSubmodules = <int>{};
+    final submodulesWithTests = <int>{};
+
     for (final module in _courseStructure) {
       final submodules = module['submodule'] as List<dynamic>? ?? [];
-      print('Module ${module['name']} has ${submodules.length} submodules');
       for (final sub in submodules) {
         if (sub is Map<String, dynamic>) {
           final submoduleId = sub['id'] as int?;
           if (submoduleId != null) {
-            try {
-              final tests = await SupabaseService().getTestsBySubmodule(submoduleId);
-              if (tests.isNotEmpty) {
-                testsMap[submoduleId] = tests;
-                print('Loaded ${tests.length} tests for submodule $submoduleId');
-              }
-            } catch (e) {
-              print('Error loading tests for submodule $submoduleId: $e');
-              // Игнорируем ошибки загрузки тестов для отдельных подмодулей
+            allSubmodules.add(submoduleId);
+            // Проверяем, есть ли тесты для этого подмодуля
+            if (_submoduleTests.containsKey(submoduleId) && _submoduleTests[submoduleId]!.isNotEmpty) {
+              submodulesWithTests.add(submoduleId);
             }
           }
         }
       }
     }
 
-    // Загружаем прогресс пользователя
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.currentUser != null) {
-      final completedSubmodules = await SupabaseService().getCompletedSubmodules(authProvider.currentUser!.id!);
-      final completedTestSubmodules = await SupabaseService().getCompletedTestSubmodules(authProvider.currentUser!.id!);
-      
-      if (mounted) {
-        setState(() {
-          _completedSubmodules = completedSubmodules;
-          _completedTestSubmodules = completedTestSubmodules;
-        });
+    // Проверяем, что все подмодули завершены
+    final allSubmodulesCompleted = allSubmodules.every((id) => _completedSubmodules.contains(id));
+
+    // Проверяем, что все тесты пройдены
+    final allTestsCompleted = submodulesWithTests.every((id) => _completedTestSubmodules.contains(id));
+
+    if (allSubmodulesCompleted && allTestsCompleted) {
+      // Генерируем сертификат
+      final certificate = await CertificateService().generateAndUploadCertificate(
+        user: user,
+        course: widget.course,
+      );
+
+      if (certificate != null && mounted) {
+        setState(() => _hasCertificate = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Поздравляем! Сертификат о завершении курса выдан.'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     }
-
-    if (mounted) {
-      setState(() {
-        _submoduleTests = testsMap;
-        _loading = false;
-      });
-    }
-    print('Modules loading completed');
-  } catch (e) {
-    print('Error in _loadModules: $e');
-    if (mounted) setState(() => _loading = false);
   }
-}
+
+  Future<void> _loadModules() async {
+    if (mounted) setState(() => _loading = true);
+    try {
+      print('Loading modules for course ${widget.course.id}');
+      final data = await SupabaseService().getModulesWithSubmodules(widget.course.id);
+      print('Loaded ${data.length} modules');
+      if (mounted) {
+        setState(() {
+          _courseStructure = data;
+        });
+      }
+
+      // Загружаем тесты для каждого подмодуля
+      final Map<int, List<TestModel>> testsMap = {};
+      for (final module in _courseStructure) {
+        final submodules = module['submodule'] as List<dynamic>? ?? [];
+        print('Module ${module['name']} has ${submodules.length} submodules');
+        for (final sub in submodules) {
+          if (sub is Map<String, dynamic>) {
+            final submoduleId = sub['id'] as int?;
+            if (submoduleId != null) {
+              try {
+                final tests = await SupabaseService().getTestsBySubmodule(submoduleId);
+                if (tests.isNotEmpty) {
+                  testsMap[submoduleId] = tests;
+                  print('Loaded ${tests.length} tests for submodule $submoduleId');
+                }
+              } catch (e) {
+                print('Error loading tests for submodule $submoduleId: $e');
+                // Игнорируем ошибки загрузки тестов для отдельных подмодулей
+              }
+            }
+          }
+        }
+      }
+
+      // Загружаем прогресс пользователя
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.currentUser != null) {
+        final completedSubmodules = await SupabaseService().getCompletedSubmodules(authProvider.currentUser!.id!);
+        final completedTestSubmodules = await SupabaseService().getCompletedTestSubmodules(authProvider.currentUser!.id!);
+        
+        if (mounted) {
+          setState(() {
+            _completedSubmodules = completedSubmodules;
+            _completedTestSubmodules = completedTestSubmodules;
+          });
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _submoduleTests = testsMap;
+          _loading = false;
+        });
+      }
+
+      // Проверяем наличие сертификата и генерируем если нужно
+      final authProvider2 = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider2.currentUser != null) {
+        final hasCertificate = await CertificateService().hasCertificate(authProvider2.currentUser!.id!, widget.course.id);
+        if (mounted) setState(() => _hasCertificate = hasCertificate);
+
+        // Проверяем и генерируем сертификат после загрузки всего
+        await _checkAndGenerateCertificate(authProvider2.currentUser!);
+      }
+
+      print('Modules loading completed');
+    } catch (e) {
+      print('Error in _loadModules: $e');
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,10 +280,30 @@ Future<void> _loadModules() async {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if (_hasCertificate)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.verified, color: Colors.white, size: 16),
+                        SizedBox(width: 4),
+                        Text(
+                          'Сертификат получен',
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -267,7 +352,7 @@ Future<void> _loadModules() async {
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
             leading: CircleAvatar(
-              backgroundColor: const Color(0xFFA58EFF).withOpacity(0.1),
+              backgroundColor: const Color(0xFFA58EFF).withValues(alpha: 0.1),
               child: Text("${module['order_module'] ?? index + 1}", 
                 style: const TextStyle(color: Color(0xFFA58EFF), fontWeight: FontWeight.bold)),
             ),
@@ -317,6 +402,8 @@ Future<void> _loadModules() async {
                             title: sub['name'] ?? 'Урок',
                             contentUrl: contentUrl,
                             submoduleId: submoduleId,
+                            courseId: widget.course.id,
+                            courseName: widget.course.name,
                             allSubmodules: allSubmodules,
                             currentIndex: currentIndex,
                             submoduleTests: _submoduleTests,
@@ -377,6 +464,8 @@ Future<void> _loadModules() async {
                           builder: (context) => TestsScreen(
                             tests: tests,
                             submoduleName: sub['name'] ?? 'Подмодуль',
+                            courseId: widget.course.id,
+                            courseName: widget.course.name,
                             allSubmodules: allSubmodules,
                             currentIndex: currentIndex,
                             submoduleTests: _submoduleTests,
@@ -457,11 +546,11 @@ Widget _buttonTemplate({
       gradient: LinearGradient(
         colors: isAccent 
             ? [_primaryPurple, const Color(0xFFF2C9D4)] 
-            : [_primaryPurple, _primaryPurple.withOpacity(0.8)],
+            : [_primaryPurple, _primaryPurple.withValues(alpha: 0.8)],
       ),
       boxShadow: [
         BoxShadow(
-          color: _primaryPurple.withOpacity(0.3), 
+          color: _primaryPurple.withValues(alpha: 0.3), 
           blurRadius: 12, 
           offset: const Offset(0, 4)
         ),
@@ -530,6 +619,8 @@ Widget _buttonTemplate({
                 title: submodule['name'] ?? 'Урок',
                 contentUrl: contentUrl,
                 submoduleId: submoduleId,
+                courseId: widget.course.id,
+                courseName: widget.course.name,
                 allSubmodules: allSubmodules,
                 currentIndex: currentIndex,
                 submoduleTests: _submoduleTests,
@@ -551,6 +642,8 @@ Widget _buttonTemplate({
             builder: (context) => TestsScreen(
               tests: tests,
               submoduleName: submodule['name'] ?? 'Подмодуль',
+              courseId: widget.course.id,
+              courseName: widget.course.name,
               allSubmodules: allSubmodules,
               currentIndex: currentIndex,
               submoduleTests: _submoduleTests,

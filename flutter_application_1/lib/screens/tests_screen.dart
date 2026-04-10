@@ -8,6 +8,8 @@ import 'submodule_content_screen.dart';
 class TestsScreen extends StatefulWidget {
   final List<TestModel> tests;
   final String submoduleName;
+  final int courseId;
+  final String courseName;
   final List<Map<String, dynamic>>? allSubmodules;
   final int currentIndex;
   final Map<int, List<TestModel>>? submoduleTests;
@@ -16,6 +18,8 @@ class TestsScreen extends StatefulWidget {
     super.key,
     required this.tests,
     required this.submoduleName,
+    required this.courseId,
+    required this.courseName,
     this.allSubmodules,
     this.currentIndex = 0,
     this.submoduleTests,
@@ -116,6 +120,8 @@ class _TestsScreenState extends State<TestsScreen> {
               title: next['name'] ?? 'Следующий урок',
               contentUrl: nextContentUrl,
               submoduleId: next['id'] as int,
+              courseId: widget.courseId,
+              courseName: widget.courseName,
               allSubmodules: widget.allSubmodules,
               currentIndex: widget.currentIndex + 1,
               submoduleTests: widget.submoduleTests,

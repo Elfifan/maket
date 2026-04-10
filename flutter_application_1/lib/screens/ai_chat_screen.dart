@@ -245,7 +245,7 @@ Widget _buildCodeBlock(String code) {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFA58EFF).withOpacity(0.3),
+                    color: const Color(0xFFA58EFF).withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),

@@ -7,14 +7,18 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:provider/provider.dart';
 import '../models/test_model.dart';
+import '../models/course_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/supabase_service.dart';
+import '../services/certificate_service.dart';
 import 'tests_screen.dart';
 
 class SubmoduleContentScreen extends StatefulWidget {
   final String title;
   final String contentUrl;
   final int submoduleId;
+  final int courseId;
+  final String courseName;
   final List<Map<String, dynamic>>? allSubmodules;
   final int currentIndex;
   final Map<int, List<TestModel>>? submoduleTests;
@@ -24,6 +28,8 @@ class SubmoduleContentScreen extends StatefulWidget {
     required this.title,
     required this.contentUrl,
     required this.submoduleId,
+    required this.courseId,
+    required this.courseName,
     required this.allSubmodules,
     required this.currentIndex,
     this.submoduleTests,
@@ -169,11 +175,112 @@ void initState() {
     return widget.allSubmodules != null && widget.currentIndex >= 0 && widget.currentIndex + 1 < widget.allSubmodules!.length;
   }
 
+  bool get _isLastSubmodule {
+    return widget.allSubmodules != null && widget.currentIndex >= 0 && widget.currentIndex == widget.allSubmodules!.length - 1;
+  }
+
   Map<String, dynamic>? get _nextSubmodule {
     if (!_hasNextSubmodule) return null;
     return widget.allSubmodules![widget.currentIndex + 1];
   }
 
+  void _completeCourse() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.currentUser == null) return;
+
+    // Проверяем, есть ли уже сертификат для этого курса
+    final hasCertificate = await CertificateService().hasCertificate(
+      authProvider.currentUser!.id!,
+      widget.courseId,
+    );
+
+    if (hasCertificate) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Сертификат за этот курс уже был выдан ранее'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+      return;
+    }
+
+    // Сохраняем прогресс текущего подмодуля
+    try {
+      await SupabaseService().saveSubmoduleProgress(authProvider.currentUser!.id!, widget.submoduleId);
+    } catch (e) {
+      print('Error saving submodule progress: $e');
+    }
+
+    // Проверяем, есть ли тесты для текущего подмодуля и проходим их
+    final tests = widget.submoduleTests?[widget.submoduleId];
+    if (tests != null && tests.isNotEmpty) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TestsScreen(
+            tests: tests,
+            submoduleName: widget.title,
+            courseId: widget.courseId,
+            courseName: widget.courseName,
+            allSubmodules: widget.allSubmodules,
+            currentIndex: widget.currentIndex,
+            submoduleTests: widget.submoduleTests,
+          ),
+        ),
+      );
+
+      if (result != true) {
+        // Тесты не пройдены
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Пройдите тесты, чтобы завершить курс')),
+        );
+        return;
+      }
+    }
+
+    // Генерируем сертификат
+    final course = CourseModel(
+      id: widget.courseId,
+      name: widget.courseName,
+      description: null,
+      price: null,
+      complexity: null,
+      status: null,
+      icon: null,
+      dateCreate: null,
+      idEmployee: null,
+    );
+
+    final certificate = await CertificateService().generateAndUploadCertificate(
+      user: authProvider.currentUser!,
+      course: course,
+    );
+
+    if (certificate != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Поздравляем! Курс завершен. Сертификат выдан.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ошибка при генерации сертификата'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
   void _goToNextSubmodule() async {
     // Сохраняем прогресс текущего подмодуля
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -195,6 +302,8 @@ void initState() {
           builder: (context) => TestsScreen(
             tests: tests,
             submoduleName: widget.title,
+            courseId: widget.courseId,
+            courseName: widget.courseName,
             allSubmodules: widget.allSubmodules,
             currentIndex: widget.currentIndex,
             submoduleTests: widget.submoduleTests,
@@ -223,6 +332,8 @@ void initState() {
           title: next['name'] ?? 'Следующий урок',
           contentUrl: nextContentUrl,
           submoduleId: next['id'] as int,
+          courseId: widget.courseId,
+          courseName: widget.courseName,
           allSubmodules: widget.allSubmodules,
           currentIndex: widget.currentIndex + 1,
           submoduleTests: widget.submoduleTests,
@@ -276,6 +387,27 @@ void initState() {
                             child: Text(
                               'Следующий: ${_nextSubmodule?['name'] ?? 'урок'}',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (_isLastSubmodule)
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: _completeCourse,
+                            child: const Text(
+                              'Завершить курс',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
