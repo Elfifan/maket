@@ -215,7 +215,7 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
 
       if (tests.isNotEmpty) {
         return tests;
-      }
+      } 
     } catch (e) {
       print('Direct test query failed: $e');
     }

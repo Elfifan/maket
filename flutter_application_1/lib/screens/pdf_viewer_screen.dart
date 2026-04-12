@@ -47,12 +47,15 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.title), backgroundColor: const Color(0xFFA58EFF)),
       body: localPath != null
-          ? PDFView(
-              filePath: localPath,
-              enableSwipe: true,
-              autoSpacing: true,
-              pageSnap: true,
-              onError: (error) => print(error.toString()),
+          ? SizedBox.expand(
+              child: PDFView(
+                filePath: localPath,
+                enableSwipe: true,
+                autoSpacing: false,
+                pageSnap: false,
+                fitPolicy: FitPolicy.BOTH,
+                onError: (error) => print(error.toString()),
+              ),
             )
           : const Center(child: CircularProgressIndicator()),
     );
