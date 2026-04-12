@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'pdf_viewer_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   
   bool _passwordVisible = false;
   bool _confirmVisible = false;
+  bool _acceptedTerms = false;
   String? _errorMessage;
 
   static const Color _bgLightGrey = Color(0xFFF8F9FB);
@@ -38,6 +40,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     
     if (_passwordController.text != _confirmPasswordController.text) {
       setState(() => _errorMessage = 'Пароли не совпадают');
+      return;
+    }
+
+    if (!_acceptedTerms) {
+      setState(() => _errorMessage = 'Необходимо принять пользовательское соглашение');
       return;
     }
 
@@ -104,6 +111,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     
                     _buildInputLabel('Подтвердите пароль'),
                     _buildConfirmPasswordField(),
+                    const SizedBox(height: 12),
+                    _buildAgreementCheckbox(),
                     
                     if (_errorMessage != null) _buildErrorMessage(),
                     
@@ -312,8 +321,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ],
   );
 
+  Widget _buildAgreementCheckbox() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Checkbox(
+          value: _acceptedTerms,
+          onChanged: (value) {
+            setState(() {
+              _acceptedTerms = value ?? false;
+              if (_acceptedTerms) {
+                _errorMessage = null;
+              }
+            });
+          },
+          activeColor: _primaryPurple,
+        ),
+        Expanded(
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text('Я принимаю ', style: TextStyle(fontSize: 13, color: _textDark)),
+              GestureDetector(
+                onTap: _openTermsPdf,
+                child: const Text(
+                  'пользовательское соглашение',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFA58EFF),
+                    fontWeight: FontWeight.bold,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+              const Text('.', style: TextStyle(fontSize: 13, color: _textDark)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openTermsPdf() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PdfViewerScreen(
+          title: 'Пользовательское соглашение',
+          assetPath: 'assets/pdf/sog.pdf',
+        ),
+      ),
+    );
+  }
+
   Widget _buildErrorMessage() => Padding(
-    padding: const EdgeInsets.only(top: 8.0), // Было 16
+    padding: const EdgeInsets.only(top: 8.0),
     child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 14)),
   );
 }
