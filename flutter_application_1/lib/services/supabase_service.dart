@@ -6,6 +6,7 @@ import '../models/user_model.dart';
 import '../models/course_model.dart';
 import '../models/module_model.dart';
 import '../models/test_model.dart';
+import '../models/certificate_model.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -299,6 +300,22 @@ Future<List<AchievementModel>> getUserAchievements(int userId) async {
         .toList();
   } catch (e) {
     print('Error fetching user achievements: $e');
+    return [];
+  }
+}
+
+Future<List<CertificateModel>> getUserCertificates(int userId) async {
+  try {
+    final response = await _client
+        .from('certificates')
+        .select('*, courses(name)')
+        .eq('id_user', userId);
+
+    final List<dynamic> data = response as List<dynamic>;
+
+    return data.map((item) => CertificateModel.fromJson(item)).toList();
+  } catch (e) {
+    print('Error fetching user certificates: $e');
     return [];
   }
 }

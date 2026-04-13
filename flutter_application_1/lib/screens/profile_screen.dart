@@ -3,8 +3,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/user_model.dart';
+import '../models/certificate_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/supabase_service.dart';
+import 'certificate_pdf_viewer_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -125,7 +127,75 @@ class ProfileScreen extends StatelessWidget {
               ),
 
               const SizedBox(height: 32),
+
+              // Заголовок блока сертификатов
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Мои сертификаты',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: _textDark
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {},
+                    child: const Text(
+                      'Смотреть все',
+                      style: TextStyle(
+                        color: _primaryPurple,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Динамический список сертификатов
+              FutureBuilder<List<CertificateModel>>(
+                future: SupabaseService().getUserCertificates(user.id!),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(
+                      height: 160,
+                      child: Center(child: CircularProgressIndicator(color: _primaryPurple)),
+                    );
+                  }
+
+                  final certificates = snapshot.data ?? [];
+
+                  if (certificates.isEmpty) {
+                    return const Text(
+                      'У вас пока нет сертификатов',
+                      style: TextStyle(color: _textGrey),
+                    );
+                  }
+
+                  return SizedBox(
+                    height: 160,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: certificates.length,
+                      itemBuilder: (context, index) {
+                        final cert = certificates[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 16),
+                          child: _buildCertificatePdfCard(context, cert),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 32),
               _buildSettingsMenu(),
+              const SizedBox(height: 32),
+              _buildLogoutButton(context, authProvider),
               const SizedBox(height: 32),
               _buildLogoutButton(context, authProvider),
               const SizedBox(height: 24),
@@ -318,56 +388,146 @@ Widget _buildAchievementCard({
     );
   }
 
-  Widget _buildSettingsMenu() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-      ),
-      child: Column(
-        children: [
-          _buildSettingsTile(Icons.notifications_none_rounded, 'Уведомления'),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
-          _buildSettingsTile(Icons.verified_user_outlined, 'Конфиденциальность'),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFEEEEEE)),
-          _buildSettingsTile(Icons.help_outline_rounded, 'Помощь'),
-        ],
+  Widget _buildCertificatePdfCard(BuildContext context, CertificateModel certificate) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CertificatePdfViewerScreen(
+              certificateUrl: certificate.certificateUrl,
+              title: 'Сертификат',
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 180,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              height: 70,
+              width: 70,
+              decoration: BoxDecoration(
+                color: _iconPurpleBackground,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.picture_as_pdf_outlined, color: _primaryPurple, size: 36),
+            ),
+            const Spacer(),
+            Text(
+              'Сертификат',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Курс завершен',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, color: _textGrey, height: 1.2),
+            ),
+            if (certificate.issueDate != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${certificate.issueDate!.day}.${certificate.issueDate!.month}.${certificate.issueDate!.year}',
+                style: const TextStyle(fontSize: 10, color: _textGrey, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSettingsTile(IconData icon, String title) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: const BoxDecoration(color: _iconPurpleBackground, shape: BoxShape.circle),
-        child: Icon(icon, color: _primaryPurple, size: 22),
+  Widget _buildSettingsMenu() {
+    return Column(
+      children: [
+        _buildMenuItem(
+          icon: Icons.notifications_outlined,
+          title: 'Уведомления',
+          onTap: () {},
+        ),
+        _buildMenuItem(
+          icon: Icons.security_outlined,
+          title: 'Безопасность',
+          onTap: () {},
+        ),
+        _buildMenuItem(
+          icon: Icons.help_outline_rounded,
+          title: 'Помощь',
+          onTap: () {},
+        ),
+        _buildMenuItem(
+          icon: Icons.info_outline_rounded,
+          title: 'О приложении',
+          onTap: () {},
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: _primaryPurple, size: 24),
+            const SizedBox(width: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: _textDark,
+              ),
+            ),
+            const Spacer(),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: _textGrey,
+              size: 16,
+            ),
+          ],
+        ),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(color: _textDark, fontSize: 16, fontWeight: FontWeight.w500),
-      ),
-      trailing: const Icon(Icons.arrow_forward_ios_rounded, color: _textGrey, size: 14),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      onTap: () {},
     );
   }
 
   Widget _buildLogoutButton(BuildContext context, AuthProvider authProvider) {
-    return SizedBox(
-      width: double.infinity,
-      height: 55,
-      child: ElevatedButton(
-        onPressed: () {
-          authProvider.logout();
-          Navigator.pushReplacementNamed(context, '/login');
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFF5F6F8),
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return InkWell(
+      onTap: () {
+        authProvider.logout();
+        if (context.mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        }
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -382,5 +542,4 @@ Widget _buildAchievementCard({
         ),
       ),
     );
-  }
-}
+  }}
