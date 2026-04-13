@@ -196,8 +196,6 @@ class ProfileScreen extends StatelessWidget {
               _buildSettingsMenu(),
               const SizedBox(height: 32),
               _buildLogoutButton(context, authProvider),
-              const SizedBox(height: 32),
-              _buildLogoutButton(context, authProvider),
               const SizedBox(height: 24),
               const Center(
                 child: Text(
@@ -436,7 +434,7 @@ Widget _buildAchievementCard({
             if (certificate.issueDate != null) ...[
               const SizedBox(height: 4),
               Text(
-                '${certificate.issueDate!.day}.${certificate.issueDate!.month}.${certificate.issueDate!.year}',
+                '${certificate.issueDate!.day.toString().padLeft(2, '0')}-${certificate.issueDate!.month.toString().padLeft(2, '0')}-${certificate.issueDate!.year}',
                 style: const TextStyle(fontSize: 10, color: _textGrey, fontWeight: FontWeight.w500),
               ),
             ],

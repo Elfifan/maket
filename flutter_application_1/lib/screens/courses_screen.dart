@@ -29,6 +29,19 @@ class _CoursesScreenState extends State<CoursesScreen> {
     {'label': 'Frontend', 'icon': Icons.laptop_chromebook_rounded},
   ];
 
+  IconData _getIcon(String? iconName) {
+    switch (iconName?.toLowerCase()) {
+      case 'code':
+        return Icons.code;
+      case 'laptop':
+        return Icons.laptop;
+      case 'grid':
+        return Icons.grid_view;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -250,7 +263,20 @@ class _CoursesScreenState extends State<CoursesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: Container(decoration: const BoxDecoration(color: _bgLightGrey, borderRadius: BorderRadius.vertical(top: Radius.circular(24))), child: const Center(child: Icon(Icons.laptop, color: _textGrey)))),
+            Expanded(
+              child: Container(
+                decoration: const BoxDecoration(color: _bgLightGrey, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                child: Center(
+                  child: course.icon != null && course.icon!.isNotEmpty
+                    ? Image.network(
+                        course.icon!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Icon(_getIcon(course.icon), color: _textGrey),
+                      )
+                    : Icon(_getIcon(course.icon), color: _textGrey),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(
