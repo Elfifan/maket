@@ -51,17 +51,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _errorMessage = null);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
-    final success = await authProvider.register(
+    final errorMessage = await authProvider.register(
       email: _emailController.text,
       password: _passwordController.text,
     );
 
     if (!mounted) return;
 
-    if (success) {
+    if (errorMessage == null) {
       Navigator.pushReplacementNamed(context, '/courses');
     } else {
-      setState(() => _errorMessage = 'Ошибка при регистрации. Возможно, email занят.');
+      setState(() => _errorMessage = errorMessage);
     }
   }
 

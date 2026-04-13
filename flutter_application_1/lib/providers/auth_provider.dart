@@ -32,7 +32,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> register({
+  Future<String?> register({
     required String email,
     required String password,
   }) async {
@@ -46,9 +46,32 @@ class AuthProvider with ChangeNotifier {
       );
       _isLoading = false;
       notifyListeners();
-      return _currentUser != null;
+      return null;
     } catch (e) {
       print('Registration error in provider: $e');
+      _isLoading = false;
+      notifyListeners();
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  Future<bool> refreshCurrentUser() async {
+    if (_currentUser?.id == null) return false;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final updatedUser = await _supabaseService.getUserById(_currentUser!.id!);
+      _isLoading = false;
+      if (updatedUser == null) {
+        return false;
+      }
+      _currentUser = updatedUser;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Error refreshing user in provider: $e');
       _isLoading = false;
       notifyListeners();
       return false;

@@ -51,6 +51,18 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
     required String password,
   }) async {
     try {
+      // Check if email is already registered
+      final existingUser = await _client
+          .from('users')
+          .select()
+          .eq('email', email)
+          .maybeSingle();
+
+      if (existingUser != null) {
+        print('Email already registered: $email');
+        throw Exception('Email уже зарегистрирован');
+      }
+
       final now = DateTime.now();
 
       final response = await _client
@@ -105,6 +117,26 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
       return UserModel.fromJson(response);
     } catch (e) {
       print('Login error for $email: $e');
+      return null;
+    }
+  }
+
+  Future<UserModel?> getUserById(int userId) async {
+    try {
+      final response = await _client
+          .from('users')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (response == null) {
+        print('User not found by id: $userId');
+        return null;
+      }
+
+      return UserModel.fromJson(response);
+    } catch (e) {
+      print('Error fetching user by id $userId: $e');
       return null;
     }
   }

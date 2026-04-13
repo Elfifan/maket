@@ -8,8 +8,25 @@ import '../providers/auth_provider.dart';
 import '../services/supabase_service.dart';
 import 'certificate_pdf_viewer_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  Future<void> _refreshProfile() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.refreshCurrentUser();
+
+    if (!mounted) return;
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось обновить данные профиля')),
+      );
+    }
+  }
 
   // Константы стилей
   static const Color _bgLightPurple = Color(0xFFFBF4FF);
@@ -35,181 +52,185 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: _buildAppBar(),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeaderCard(userName),
-              const SizedBox(height: 24),
-              _buildInfoTile(
-                icon: Icons.person_outline_rounded,
-                label: 'ИМЯ',
-                value: userName,
-              ),
-              const SizedBox(height: 12),
-              _buildInfoTile(
-                icon: Icons.email_outlined,
-                label: 'ЭЛЕКТРОННАЯ ПОЧТА',
-                value: user.email ?? 'example@codix.ru',
-              ),
-              const SizedBox(height: 24),
-              _buildProgressCard(),
-              const SizedBox(height: 32),
-              
-              // Заголовок блока достижений
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Мои достижения',
+        child: RefreshIndicator(
+          onRefresh: _refreshProfile,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeaderCard(userName),
+                const SizedBox(height: 24),
+                _buildInfoTile(
+                  icon: Icons.person_outline_rounded,
+                  label: 'ИМЯ',
+                  value: userName,
+                ),
+                const SizedBox(height: 12),
+                _buildInfoTile(
+                  icon: Icons.email_outlined,
+                  label: 'ЭЛЕКТРОННАЯ ПОЧТА',
+                  value: user.email ?? 'example@codix.ru',
+                ),
+                const SizedBox(height: 24),
+                _buildProgressCard(),
+                const SizedBox(height: 32),
+                
+                // Заголовок блока достижений
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Мои достижения',
+                      style: TextStyle(
+                        fontSize: 18, 
+                        fontWeight: FontWeight.bold, 
+                        color: _textDark
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {},
+                      child: const Text(
+                        'Смотреть все',
+                        style: TextStyle(
+                          color: _primaryPurple, 
+                          fontSize: 14, 
+                          fontWeight: FontWeight.w600
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Динамический список достижений
+                FutureBuilder<List<AchievementModel>>(
+                  future: SupabaseService().getUserAchievements(user.id!),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                        height: 160,
+                        child: Center(child: CircularProgressIndicator(color: _primaryPurple)),
+                      );
+                    }
+
+                    final achievements = snapshot.data ?? [];
+
+                    if (achievements.isEmpty) {
+                      return const Text(
+                        'У вас пока нет достижений',
+                        style: TextStyle(color: _textGrey),
+                      );
+                    }
+
+                    return SizedBox(
+                      height: 160,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: achievements.length,
+                        itemBuilder: (context, index) {
+                          final ach = achievements[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 16),
+                            child: _buildAchievementCard(
+                              title: ach.name ?? 'Награда',
+                              description: ach.description ?? '',
+                              bytes: ach.imageBytes,
+                              color: _iconPurpleBackground,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 32),
+
+                // Заголовок блока сертификатов
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Мои сертификаты',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: _textDark
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {},
+                      child: const Text(
+                        'Смотреть все',
+                        style: TextStyle(
+                          color: _primaryPurple,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Динамический список сертификатов
+                FutureBuilder<List<CertificateModel>>(
+                  future: SupabaseService().getUserCertificates(user.id!),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                        height: 160,
+                        child: Center(child: CircularProgressIndicator(color: _primaryPurple)),
+                      );
+                    }
+
+                    final certificates = snapshot.data ?? [];
+
+                    if (certificates.isEmpty) {
+                      return const Text(
+                        'У вас пока нет сертификатов',
+                        style: TextStyle(color: _textGrey),
+                      );
+                    }
+
+                    return SizedBox(
+                      height: 160,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: certificates.length,
+                        itemBuilder: (context, index) {
+                          final cert = certificates[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 16),
+                            child: _buildCertificatePdfCard(context, cert),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 32),
+                _buildSettingsMenu(),
+                const SizedBox(height: 32),
+                _buildLogoutButton(context, authProvider),
+                const SizedBox(height: 24),
+                const Center(
+                  child: Text(
+                    'ВЕРСИЯ ПРИЛОЖЕНИЯ 2.4.0',
                     style: TextStyle(
-                      fontSize: 18, 
+                      color: _textGrey, 
+                      fontSize: 12, 
                       fontWeight: FontWeight.bold, 
-                      color: _textDark
+                      letterSpacing: 1
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text(
-                      'Смотреть все',
-                      style: TextStyle(
-                        color: _primaryPurple, 
-                        fontSize: 14, 
-                        fontWeight: FontWeight.w600
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Динамический список достижений
-              FutureBuilder<List<AchievementModel>>(
-                future: SupabaseService().getUserAchievements(user.id!),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(
-                      height: 160,
-                      child: Center(child: CircularProgressIndicator(color: _primaryPurple)),
-                    );
-                  }
-
-                  final achievements = snapshot.data ?? [];
-
-                  if (achievements.isEmpty) {
-                    return const Text(
-                      'У вас пока нет достижений',
-                      style: TextStyle(color: _textGrey),
-                    );
-                  }
-
-                  return SizedBox(
-                    height: 160,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: achievements.length,
-                      itemBuilder: (context, index) {
-                        final ach = achievements[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 16),
-                          child: _buildAchievementCard(
-                            title: ach.name ?? 'Награда',
-                            description: ach.description ?? '',
-                            bytes: ach.imageBytes,
-                            color: _iconPurpleBackground,
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 32),
-
-              // Заголовок блока сертификатов
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Мои сертификаты',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: _textDark
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text(
-                      'Смотреть все',
-                      style: TextStyle(
-                        color: _primaryPurple,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Динамический список сертификатов
-              FutureBuilder<List<CertificateModel>>(
-                future: SupabaseService().getUserCertificates(user.id!),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(
-                      height: 160,
-                      child: Center(child: CircularProgressIndicator(color: _primaryPurple)),
-                    );
-                  }
-
-                  final certificates = snapshot.data ?? [];
-
-                  if (certificates.isEmpty) {
-                    return const Text(
-                      'У вас пока нет сертификатов',
-                      style: TextStyle(color: _textGrey),
-                    );
-                  }
-
-                  return SizedBox(
-                    height: 160,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: certificates.length,
-                      itemBuilder: (context, index) {
-                        final cert = certificates[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 16),
-                          child: _buildCertificatePdfCard(context, cert),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 32),
-              _buildSettingsMenu(),
-              const SizedBox(height: 32),
-              _buildLogoutButton(context, authProvider),
-              const SizedBox(height: 24),
-              const Center(
-                child: Text(
-                  'ВЕРСИЯ ПРИЛОЖЕНИЯ 2.4.0',
-                  style: TextStyle(
-                    color: _textGrey, 
-                    fontSize: 12, 
-                    fontWeight: FontWeight.bold, 
-                    letterSpacing: 1
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),
@@ -227,6 +248,13 @@ class ProfileScreen extends StatelessWidget {
         'Профиль',
         style: TextStyle(color: _textDark, fontSize: 20, fontWeight: FontWeight.bold),
       ),
+      actions: [
+        IconButton(
+          onPressed: _refreshProfile,
+          icon: const Icon(Icons.refresh, color: _textDark),
+          tooltip: 'Обновить профиль',
+        ),
+      ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
         child: Container(color: const Color(0xFFEEEEEE), height: 1),
