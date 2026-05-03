@@ -6,6 +6,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/courses_screen.dart'; 
+import 'screens/user_chats_list_screen.dart';
 import 'dart:ui';
 import 'dart:io';
 import 'package:google_fonts/google_fonts.dart';
@@ -50,6 +51,7 @@ class MyApp extends StatelessWidget {
           '/home': (context) => const MainScreen(),
           '/onboarding': (context) => const OnboardingScreen(),
           '/courses': (context) => const CoursesScreen(),
+
         },
       ),
     );

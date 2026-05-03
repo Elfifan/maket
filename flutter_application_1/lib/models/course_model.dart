@@ -7,7 +7,7 @@ class CourseModel {
   final DateTime? dateCreate;
   final double? price;
   final int? complexity;
-  final bool? status;
+  final String? status; // Изменено с bool? на String?
 
   CourseModel({
     required this.id,
@@ -22,20 +22,32 @@ class CourseModel {
   });
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
+    // Обработка статуса - теперь это String из enum
+    String? status;
+    final statusValue = json['status'];
+    if (statusValue is String) {
+      status = statusValue;
+    } else if (statusValue is bool) {
+      // Для обратной совместимости
+      status = statusValue ? 'Активный' : 'На проверке';
+    } else if (statusValue != null) {
+      status = statusValue.toString();
+    }
+
     return CourseModel(
-      id: json['id'] as int,
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
       idEmployee: json['id_employee'] as int?,
-      name: json['name'] as String,
+      name: json['name']?.toString() ?? '',
       description: json['description'] as String?,
       icon: json['icon'] as String?,
       dateCreate: json['date_create'] != null
-          ? DateTime.parse(json['date_create'])
+          ? DateTime.tryParse(json['date_create'].toString())
           : null,
       price: json['price'] != null
           ? (json['price'] as num).toDouble()
           : null,
       complexity: json['complexity'] as int?,
-      status: json['status'] as bool?,
+      status: status,
     );
   }
 
@@ -45,10 +57,14 @@ class CourseModel {
       if (idEmployee != null) 'id_employee': idEmployee,
       'name': name,
       if (description != null) 'description': description,
+      if (icon != null) 'icon': icon,
       if (dateCreate != null) 'date_create': dateCreate!.toIso8601String().split('T')[0],
       if (price != null) 'price': price,
       if (complexity != null) 'complexity': complexity,
       if (status != null) 'status': status,
     };
   }
+
+  /// Проверка, активен ли курс
+  bool get isActive => status == 'Активный';
 }

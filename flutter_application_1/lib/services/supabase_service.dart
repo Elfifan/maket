@@ -159,13 +159,14 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
 
 Future<List<CourseModel>> getCourses({String? search, String? category}) async {
   try {
-
-    var query = _client.from('courses').select();
+    var query = _client
+        .from('courses')
+        .select()
+        .eq('status', 'Активный'); 
 
     if (search != null && search.isNotEmpty) {
       query = query.ilike('name', '%$search%');
     }
-
 
     if (category != null && category.isNotEmpty) {
       query = query.eq('category', category);
@@ -199,7 +200,8 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
           .select(
             'id,id_employee,name,description,date_create,price,complexity,status',
           )
-          .filter('id', 'in', '(${ids.join(',')})');
+          .filter('id', 'in', '(${ids.join(',')})')
+          .eq('status', 'Активный');;
       final list = List<Map<String, dynamic>>.from(coursesResp as List);
       return list.map((j) => CourseModel.fromJson(j)).toList();
     } catch (e, st) {

@@ -61,7 +61,7 @@ class CustomBottomNav extends StatelessWidget {
               padding: EdgeInsets.only(bottom: 4),
               child: Icon(Icons.book_rounded, size: 24),
             ),
-            label: 'Обучение',
+            label: 'Чаты с авторами',
           ),
           BottomNavigationBarItem(
             icon: Padding(
