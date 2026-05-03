@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/course_model.dart';
+import '../models/practical_task_model.dart';
 import '../models/test_model.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
@@ -8,6 +9,7 @@ import '../services/certificate_service.dart';
 import '../services/supabase_service.dart';
 import 'submodule_content_screen.dart';
 import 'tests_screen.dart';
+import 'practical_task_screen.dart';
 
 class CourseProfileScreen extends StatefulWidget {
   final CourseModel course;
@@ -21,6 +23,8 @@ class CourseProfileScreen extends StatefulWidget {
 class _CourseProfileScreenState extends State<CourseProfileScreen> {
   List<Map<String, dynamic>> _courseStructure = [];
   Map<int, List<TestModel>> _submoduleTests = {};
+  Map<int, List<PracticalTaskModel>> _practicalTasks = {};     
+  Set<int> _completedPracticalTasks = {};                         
   Set<int> _completedSubmodules = {};
   Set<int> _completedTestSubmodules = {};
   bool _loading = false;
@@ -140,16 +144,40 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
         }
       }
 
+// Загружаем практические задания для каждого подмодуля
+final Map<int, List<PracticalTaskModel>> practicalTasksMap = {};
+for (final module in _courseStructure) {
+  final submodules = module['submodule'] as List<dynamic>? ?? [];
+  for (final sub in submodules) {
+    if (sub is Map<String, dynamic>) {
+      final submoduleId = sub['id'] as int?;
+      if (submoduleId != null) {
+        try {
+          final tasks = await SupabaseService().getPracticalTasks(submoduleId);
+          if (tasks.isNotEmpty) {
+            practicalTasksMap[submoduleId] = tasks;
+          }
+        } catch (e) {
+          print('Error loading practical tasks for submodule $submoduleId: $e');
+        }
+      }
+    }
+  }
+}
+
       // Загружаем прогресс пользователя
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.currentUser != null) {
         final completedSubmodules = await SupabaseService().getCompletedSubmodules(authProvider.currentUser!.id!);
         final completedTestSubmodules = await SupabaseService().getCompletedTestSubmodules(authProvider.currentUser!.id!);
-        
+        final completedPracticalTasks = await SupabaseService().getCompletedPracticalTasks(authProvider.currentUser!.id!);
+
         if (mounted) {
           setState(() {
             _completedSubmodules = completedSubmodules;
             _completedTestSubmodules = completedTestSubmodules;
+            _completedPracticalTasks = completedPracticalTasks;  
+            _practicalTasks = practicalTasksMap; 
           });
         }
       }
@@ -407,6 +435,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                             allSubmodules: allSubmodules,
                             currentIndex: currentIndex,
                             submoduleTests: _submoduleTests,
+                            practicalTasks: _practicalTasks,
                           ),
                         ),
                       );
@@ -469,6 +498,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                             allSubmodules: allSubmodules,
                             currentIndex: currentIndex,
                             submoduleTests: _submoduleTests,
+                            practicalTasks: _practicalTasks,
                           ),
                         ),
                       );
@@ -483,6 +513,59 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                   },
                 ));
               }
+              // Добавляем практические задания для этого подмодуля
+final practicalTasks = submoduleId != null ? _practicalTasks[submoduleId] : null;
+if (practicalTasks != null && practicalTasks.isNotEmpty) {
+  final bool isTaskCompleted = submoduleId != null && _completedPracticalTasks.contains(submoduleId);
+  
+  items.add(ListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
+    leading: Icon(
+      isTaskCompleted ? Icons.check_circle : Icons.code,
+      color: isTaskCompleted ? Colors.green : (_isEnrolled ? const Color(0xFFA58EFF) : Colors.grey),
+      size: 20,
+    ),
+    title: Text(
+      'Практика (${practicalTasks.length})',
+      style: TextStyle(
+        color: _isEnrolled ? _textDark : _textGrey,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+    trailing: Icon(
+      _isEnrolled ? Icons.arrow_forward_ios_rounded : Icons.lock_outline,
+      size: 16,
+      color: Colors.grey,
+    ),
+    onTap: () {
+      if (_isEnrolled) {
+        final currentIndex = allSubmodules.indexWhere((item) => item['id'] == submoduleId);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PracticalTaskScreen(
+              task: practicalTasks[0],
+              courseId: widget.course.id,
+              courseName: widget.course.name,
+              allSubmodules: allSubmodules,
+              currentIndex: currentIndex,
+              practicalTasks: _practicalTasks,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Сначала необходимо купить курс'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    },
+  ));
+}
+
+
 
               return items;
             }).toList(),
@@ -624,6 +707,7 @@ Widget _buttonTemplate({
                 allSubmodules: allSubmodules,
                 currentIndex: currentIndex,
                 submoduleTests: _submoduleTests,
+                practicalTasks: _practicalTasks,
               ),
             ),
           );
@@ -652,8 +736,29 @@ Widget _buttonTemplate({
         );
         return;
       }
-    }
+
     
+    // Проверяем, есть ли практические задания для этого подмодуля
+final practicalTasks = _practicalTasks[submoduleId];
+if (practicalTasks != null && practicalTasks.isNotEmpty && !_completedPracticalTasks.contains(submoduleId)) {
+  // Практические задания не выполнены - открываем их
+  final currentIndex = allSubmodules.indexOf(submodule);
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => PracticalTaskScreen(
+        task: practicalTasks[0],
+        courseId: widget.course.id,
+        courseName: widget.course.name,
+        allSubmodules: allSubmodules,
+        currentIndex: currentIndex,
+        practicalTasks: _practicalTasks,
+      ),
+    ),
+  );
+  return;
+}
+    }
     // Все подмодули и тесты пройдены
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Поздравляем! Вы завершили курс!')),

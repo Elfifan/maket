@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/practical_task_model.dart';
 import '../models/test_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/supabase_service.dart';
@@ -13,6 +14,7 @@ class TestsScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? allSubmodules;
   final int currentIndex;
   final Map<int, List<TestModel>>? submoduleTests;
+  final Map<int, List<PracticalTaskModel>>? practicalTasks;
 
   const TestsScreen({
     super.key,
@@ -23,6 +25,7 @@ class TestsScreen extends StatefulWidget {
     this.allSubmodules,
     this.currentIndex = 0,
     this.submoduleTests,
+    this.practicalTasks
   });
 
   @override
@@ -125,6 +128,7 @@ class _TestsScreenState extends State<TestsScreen> {
               allSubmodules: widget.allSubmodules,
               currentIndex: widget.currentIndex + 1,
               submoduleTests: widget.submoduleTests,
+              practicalTasks: widget.practicalTasks,
             ),
           ),
         );

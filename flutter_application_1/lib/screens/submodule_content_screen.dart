@@ -12,6 +12,7 @@ import '../providers/auth_provider.dart';
 import '../services/supabase_service.dart';
 import '../services/certificate_service.dart';
 import 'tests_screen.dart';
+import '../models/practical_task_model.dart';
 
 class SubmoduleContentScreen extends StatefulWidget {
   final String title;
@@ -22,6 +23,7 @@ class SubmoduleContentScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? allSubmodules;
   final int currentIndex;
   final Map<int, List<TestModel>>? submoduleTests;
+  final Map<int, List<PracticalTaskModel>>? practicalTasks;
 
   const SubmoduleContentScreen({
     super.key,
@@ -33,6 +35,7 @@ class SubmoduleContentScreen extends StatefulWidget {
     required this.allSubmodules,
     required this.currentIndex,
     this.submoduleTests,
+    this.practicalTasks,
   });
 
   @override
@@ -307,6 +310,7 @@ void initState() {
             allSubmodules: widget.allSubmodules,
             currentIndex: widget.currentIndex,
             submoduleTests: widget.submoduleTests,
+            practicalTasks: widget.practicalTasks,
           ),
         ),
       );

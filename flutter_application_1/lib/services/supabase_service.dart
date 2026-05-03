@@ -2,6 +2,7 @@
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/practical_task_model.dart';
 import '../models/user_model.dart';
 import '../models/course_model.dart';
 import '../models/module_model.dart';
@@ -570,4 +571,91 @@ Future<bool> sendEmailReceipt({
       return {};
     }
   }
+
+  // Добавьте в класс SupabaseService:
+
+/// Получить практические задания для подмодуля
+Future<List<PracticalTaskModel>> getPracticalTasks(int submoduleId) async {
+  try {
+    final response = await _client
+        .from('practical_task')
+        .select('*')
+        .eq('id_submodule', submoduleId)
+        .eq('status', true)
+        .order('order_task', ascending: true);
+
+    return List<Map<String, dynamic>>.from(response)
+        .map((json) => PracticalTaskModel.fromJson(json))
+        .toList();
+  } catch (e) {
+    print('Error getting practical tasks: $e');
+    return [];
+  }
 }
+
+/// Сохранить результат практического задания
+Future<void> savePracticalTaskResult(
+  int userId,
+  int taskId,
+  int submoduleId,
+  String submission,
+) async {
+  try {
+    // Проверяем, существует ли уже запись
+    final existing = await _client
+        .from('student_practical_result')
+        .select('id')
+        .eq('id_user', userId)
+        .eq('id_task', taskId)
+        .maybeSingle();
+
+    if (existing != null) {
+      // Обновляем
+      await _client
+          .from('student_practical_result')
+          .update({
+            'submission': submission,
+            'status': 'completed',
+            'score': 100,
+            'date_submitted': DateTime.now().toIso8601String(),
+          })
+          .eq('id', existing['id']);
+    } else {
+      // Создаем новую
+      await _client
+          .from('student_practical_result')
+          .insert({
+            'id_user': userId,
+            'id_task': taskId,
+            'id_submodule': submoduleId,
+            'submission': submission,
+            'status': 'completed',
+            'score': 100,
+            'date_submitted': DateTime.now().toIso8601String(),
+          });
+    }
+  } catch (e) {
+    print('Error saving practical task result: $e');
+    throw e;
+  }
+}
+
+/// Получить завершенные практические задания
+Future<Set<int>> getCompletedPracticalTasks(int userId) async {
+  try {
+    final response = await _client
+        .from('student_practical_result')
+        .select('id_task')
+        .eq('id_user', userId)
+        .eq('status', 'completed');
+
+    return List<Map<String, dynamic>>.from(response)
+        .map((row) => row['id_task'] as int)
+        .toSet();
+  } catch (e) {
+    print('Error getting completed practical tasks: $e');
+    return {};
+  }
+}
+}
+

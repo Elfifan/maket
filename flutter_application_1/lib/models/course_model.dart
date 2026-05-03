@@ -22,13 +22,11 @@ class CourseModel {
   });
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
-    // Обработка статуса - теперь это String из enum
     String? status;
     final statusValue = json['status'];
     if (statusValue is String) {
       status = statusValue;
     } else if (statusValue is bool) {
-      // Для обратной совместимости
       status = statusValue ? 'Активный' : 'На проверке';
     } else if (statusValue != null) {
       status = statusValue.toString();
