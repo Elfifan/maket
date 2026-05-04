@@ -7,6 +7,7 @@ import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/certificate_service.dart';
 import '../services/supabase_service.dart';
+import 'course_reviews_section.dart';
 import 'submodule_content_screen.dart';
 import 'tests_screen.dart';
 import 'practical_task_screen.dart';
@@ -214,7 +215,7 @@ for (final module in _courseStructure) {
       body: Stack(
         children: [
           SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 100),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 140),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -243,11 +244,18 @@ for (final module in _courseStructure) {
                 _loading 
                   ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
                   : _buildModulesList(),
+
+                const SizedBox(height: 24),
+
+                // 4. Отзывы внизу страницы курса
+                CourseReviewsSection(
+                  courseId: widget.course.id,
+                  isEnrolled: _isEnrolled,
+                ),
               ],
             ),
           ),
-          
-          // 4. Кнопка действия снизу
+          // 5. Кнопка действия снизу
           Positioned(
             bottom: 24,
             left: 24,

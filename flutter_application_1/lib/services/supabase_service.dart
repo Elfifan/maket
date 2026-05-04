@@ -639,5 +639,9 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
     return {};
   }
 }
+SupabaseClient get client {
+  return _client;
 }
+}
+
 

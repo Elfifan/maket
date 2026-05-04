@@ -257,7 +257,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     
     // Находим первый курс пользователя для отображения в "текущем пути"
-    String courseName = _myCourses.first.name;
+    String courseName = 'Начни уже изучать';
     String progressText = '0%';
     
     if (_myCourses.isNotEmpty) {
