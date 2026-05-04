@@ -53,6 +53,9 @@ flutter:
   assets:
     - lib/assets/images/
     - assets/pdf/sog.pdf
+    - assets/pdf/help.pdf
+    - assets/pdf/security.pdf
+    - assets/pdf/about.pdf
     - assets/fonts/Roboto-Regular.ttf
     - assets/fonts/Roboto-Bold.ttf
 

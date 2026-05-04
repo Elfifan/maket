@@ -65,22 +65,13 @@ class AchievementModel {
 
   AchievementModel({required this.id, this.name, this.description, this.image});
 
-  Uint8List? get imageBytes {
-    if (image == null || image!.isEmpty) return null;
-    try {
-      return base64Decode(image!);
-    } catch (e) {
-      print("Ошибка декодирования Base64: $e");
-      return null;
-    }
-  }
-
+  // Убираем Base64 декодирование - image теперь URL
   factory AchievementModel.fromJson(Map<String, dynamic> json) {
     return AchievementModel(
       id: json['id'],
       name: json['name'],
       description: json['description'],
-      image: json['image'],
+      image: json['image'], // Это URL или путь
     );
   }
 }

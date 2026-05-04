@@ -1,12 +1,13 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/user_model.dart';
 import '../models/certificate_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/supabase_service.dart';
 import 'certificate_pdf_viewer_screen.dart';
+import 'pdf_viewer_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,19 +17,11 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  Future<void> _refreshProfile() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final success = await authProvider.refreshCurrentUser();
+  final ImagePicker _picker = ImagePicker();
+  final TextEditingController _nameController = TextEditingController();
+  bool _isEditingName = false;
+  bool _isSavingName = false;
 
-    if (!mounted) return;
-    if (!success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не удалось обновить данные профиля')),
-      );
-    }
-  }
-
-  // Константы стилей
   static const Color _bgLightPurple = Color(0xFFFBF4FF);
   static const Color _textDark = Color(0xFF1E1E2E);
   static const Color _textGrey = Color(0xFF9094A6);
@@ -36,233 +29,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const Color _iconPurpleBackground = Color(0xFFF5F0FF);
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.currentUser;
 
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('Ошибка данных пользователя')),
-      );
+      return const Scaffold(body: Center(child: Text('Ошибка данных пользователя')));
     }
 
     final userName = user.name ?? user.email?.split('@')[0] ?? 'Пользователь';
+    
+    // Получаем URL аватара
+    String? avatarUrl;
+    if (user.avatar != null && user.avatar!.isNotEmpty) {
+      final avatarStr = String.fromCharCodes(user.avatar!);
+      if (avatarStr.startsWith('http')) {
+        avatarUrl = avatarStr;
+      }
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        titleSpacing: 24,
+        title: const Text('Профиль', style: TextStyle(color: _textDark, fontSize: 20, fontWeight: FontWeight.bold)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: const Color(0xFFEEEEEE), height: 1),
+        ),
+      ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refreshProfile,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeaderCard(userName),
-                const SizedBox(height: 24),
-                _buildInfoTile(
-                  icon: Icons.person_outline_rounded,
-                  label: 'ИМЯ',
-                  value: userName,
-                ),
-                const SizedBox(height: 12),
-                _buildInfoTile(
-                  icon: Icons.email_outlined,
-                  label: 'ЭЛЕКТРОННАЯ ПОЧТА',
-                  value: user.email ?? 'example@codix.ru',
-                ),
-                const SizedBox(height: 24),
-                _buildProgressCard(),
-                const SizedBox(height: 32),
-                
-                // Заголовок блока достижений
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Мои достижения',
-                      style: TextStyle(
-                        fontSize: 18, 
-                        fontWeight: FontWeight.bold, 
-                        color: _textDark
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        'Смотреть все',
-                        style: TextStyle(
-                          color: _primaryPurple, 
-                          fontSize: 14, 
-                          fontWeight: FontWeight.w600
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Динамический список достижений
-                FutureBuilder<List<AchievementModel>>(
-                  future: SupabaseService().getUserAchievements(user.id!),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox(
-                        height: 160,
-                        child: Center(child: CircularProgressIndicator(color: _primaryPurple)),
-                      );
-                    }
-
-                    final achievements = snapshot.data ?? [];
-
-                    if (achievements.isEmpty) {
-                      return const Text(
-                        'У вас пока нет достижений',
-                        style: TextStyle(color: _textGrey),
-                      );
-                    }
-
-                    return SizedBox(
-                      height: 160,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: achievements.length,
-                        itemBuilder: (context, index) {
-                          final ach = achievements[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 16),
-                            child: _buildAchievementCard(
-                              title: ach.name ?? 'Награда',
-                              description: ach.description ?? '',
-                              bytes: ach.imageBytes,
-                              color: _iconPurpleBackground,
-                            ),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 32),
-
-                // Заголовок блока сертификатов
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Мои сертификаты',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: _textDark
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        'Смотреть все',
-                        style: TextStyle(
-                          color: _primaryPurple,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Динамический список сертификатов
-                FutureBuilder<List<CertificateModel>>(
-                  future: SupabaseService().getUserCertificates(user.id!),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox(
-                        height: 160,
-                        child: Center(child: CircularProgressIndicator(color: _primaryPurple)),
-                      );
-                    }
-
-                    final certificates = snapshot.data ?? [];
-
-                    if (certificates.isEmpty) {
-                      return const Text(
-                        'У вас пока нет сертификатов',
-                        style: TextStyle(color: _textGrey),
-                      );
-                    }
-
-                    return SizedBox(
-                      height: 160,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: certificates.length,
-                        itemBuilder: (context, index) {
-                          final cert = certificates[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 16),
-                            child: _buildCertificatePdfCard(context, cert),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 32),
-                _buildSettingsMenu(),
-                const SizedBox(height: 32),
-                _buildLogoutButton(context, authProvider),
-                const SizedBox(height: 24),
-                const Center(
-                  child: Text(
-                    'ВЕРСИЯ ПРИЛОЖЕНИЯ 2.4.0',
-                    style: TextStyle(
-                      color: _textGrey, 
-                      fontSize: 12, 
-                      fontWeight: FontWeight.bold, 
-                      letterSpacing: 1
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeaderCard(userName, avatarUrl),
+              const SizedBox(height: 24),
+              _buildNameTile(userName),
+              const SizedBox(height: 32),
+              _buildAchievements(user.id!),
+              const SizedBox(height: 32),
+              _buildCertificates(user.id!),
+              const SizedBox(height: 32),
+              _buildSettingsMenu(),
+              const SizedBox(height: 32),
+              _buildLogoutButton(context, authProvider),
+              const SizedBox(height: 24),
+              const Center(
+                child: Text('ВЕРСИЯ ПРИЛОЖЕНИЯ 2.4.0',
+                    style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),
     );
   }
 
+  // ==================== АВАТАР И ИМЯ ====================
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      automaticallyImplyLeading: false,
-      titleSpacing: 24,
-      title: const Text(
-        'Профиль',
-        style: TextStyle(color: _textDark, fontSize: 20, fontWeight: FontWeight.bold),
-      ),
-      actions: [
-        IconButton(
-          onPressed: _refreshProfile,
-          icon: const Icon(Icons.refresh, color: _textDark),
-          tooltip: 'Обновить профиль',
-        ),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(color: const Color(0xFFEEEEEE), height: 1),
-      ),
-    );
-  }
-
-  Widget _buildHeaderCard(String name) {
+  Widget _buildHeaderCard(String name, String? avatarUrl) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -272,22 +110,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: Colors.grey[200],
-            child: const Icon(Icons.person, size: 50, color: Colors.white),
+          GestureDetector(
+            onTap: _changeAvatar,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                      ? NetworkImage(avatarUrl)
+                      : null,
+                  child: avatarUrl == null || avatarUrl.isEmpty
+                      ? const Icon(Icons.person, size: 50, color: Colors.white)
+                      : null,
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: _primaryPurple,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
+                    ),
+                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
-          Text(
-            name,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textDark),
-          ),
+          Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textDark)),
         ],
       ),
     );
   }
 
-  Widget _buildInfoTile({required IconData icon, required String label, required String value}) {
+  Widget _buildNameTile(String currentName) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -298,76 +159,179 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Row(
         children: [
-          Icon(icon, color: _textGrey, size: 20),
+          const Icon(Icons.person_outline_rounded, color: _textGrey, size: 20),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(color: _textGrey, fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(color: _textDark, fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
+            child: _isEditingName
+                ? TextField(
+                    controller: _nameController,
+                    autofocus: true,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    onSubmitted: (_) => _saveName(),
+                  )
+                : GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isEditingName = true;
+                        _nameController.text = currentName;
+                      });
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('ИМЯ', style: TextStyle(color: _textGrey, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text(currentName, style: const TextStyle(color: _textDark, fontSize: 14, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
           ),
-          const Icon(Icons.edit_rounded, color: Color(0xFFE0CFFF), size: 18),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: _bgLightPurple,
-        borderRadius: BorderRadius.circular(32),
-      ),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Прогресс обучения',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark),
-                ),
-                SizedBox(height: 12),
-                Text(
-                  '64%',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: _textDark),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 60,
-            width: 60,
-            child: CircularProgressIndicator(
-              value: 0.64,
-              strokeWidth: 8,
-              backgroundColor: const Color(0xFFEAE0FF),
-              valueColor: const AlwaysStoppedAnimation<Color>(_primaryPurple),
-            ),
+          IconButton(
+            icon: _isSavingName
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _primaryPurple))
+                : Icon(_isEditingName ? Icons.check_rounded : Icons.edit_rounded, color: _primaryPurple, size: 20),
+            onPressed: _isSavingName ? null : () {
+              if (_isEditingName) {
+                _saveName();
+              } else {
+                setState(() {
+                  _isEditingName = true;
+                  _nameController.text = currentName;
+                });
+              }
+            },
           ),
         ],
       ),
     );
   }
 
-Widget _buildAchievementCard({
-    required String title,
-    required String description,
-    Uint8List? bytes, 
-    required Color color,
-  }) {
+  Future<void> _saveName() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+    if (user == null) return;
+
+    final newName = _nameController.text.trim();
+    if (newName.isEmpty || newName == user.name) {
+      setState(() => _isEditingName = false);
+      return;
+    }
+
+    setState(() => _isSavingName = true);
+
+    final success = await SupabaseService().updateUserName(user.id!, newName);
+    if (success) {
+      await authProvider.refreshCurrentUser();
+      if (mounted) {
+        setState(() {
+          _isEditingName = false;
+          _isSavingName = false;
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() => _isSavingName = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка сохранения'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _changeAvatar() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+    if (user == null) return;
+
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (image == null) return;
+
+    // Показываем индикатор загрузки
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator(color: _primaryPurple)),
+      );
+    }
+
+    try {
+      final bytes = await image.readAsBytes();
+      final ext = image.path.split('.').last;
+
+      final url = await SupabaseService().uploadAvatar(user.id!, bytes, ext);
+      if (url != null) {
+        await SupabaseService().updateUserAvatar(user.id!, url);
+        await authProvider.refreshCurrentUser();
+        if (mounted) {
+          Navigator.pop(context); // Закрываем индикатор
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Аватар обновлен'), backgroundColor: Colors.green),
+          );
+        }
+      } else {
+        if (mounted) Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // ==================== ДОСТИЖЕНИЯ ====================
+
+  Widget _buildAchievements(int userId) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Мои достижения', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark)),
+        const SizedBox(height: 16),
+        FutureBuilder<List<AchievementModel>>(
+          future: SupabaseService().getUserAchievements(userId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(height: 160, child: Center(child: CircularProgressIndicator(color: _primaryPurple)));
+            }
+            final achievements = snapshot.data ?? [];
+            if (achievements.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 30),
+                child: Center(child: Text('У вас пока нет достижений', style: TextStyle(color: _textGrey))),
+              );
+            }
+            return SizedBox(
+              height: 160,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: achievements.length,
+                itemBuilder: (context, index) {
+                  final ach = achievements[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _buildAchievementCard(
+                      title: ach.name ?? 'Награда',
+                      description: ach.description ?? '',
+                      imageUrl: ach.image,
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAchievementCard({required String title, required String description, String? imageUrl}) {
     return Container(
       width: 180,
       padding: const EdgeInsets.all(16),
@@ -383,89 +347,82 @@ Widget _buildAchievementCard({
             height: 70,
             width: 70,
             decoration: BoxDecoration(
-              color: color,
+              color: _iconPurpleBackground,
               borderRadius: BorderRadius.circular(12),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-
-              child: bytes != null 
-                  ? Image.memory(
-                      bytes,
+              child: imageUrl != null && imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
                       fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.emoji_events_outlined, color: _primaryPurple, size: 36),
                     )
-                  : const Icon(Icons.emoji_events_outlined, color: _primaryPurple),
+                  : const Icon(Icons.emoji_events_outlined, color: _primaryPurple, size: 36),
             ),
           ),
           const Spacer(),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark),
-          ),
+          Text(title, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _textDark)),
           const SizedBox(height: 4),
-          Text(
-            description,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: _textGrey, height: 1.2),
-          ),
+          Text(description, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: _textGrey)),
         ],
       ),
     );
   }
 
+  // ==================== СЕРТИФИКАТЫ ====================
+
+  Widget _buildCertificates(int userId) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Мои сертификаты', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark)),
+        const SizedBox(height: 16),
+        FutureBuilder<List<CertificateModel>>(
+          future: SupabaseService().getUserCertificates(userId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(height: 160, child: Center(child: CircularProgressIndicator(color: _primaryPurple)));
+            }
+            final certificates = snapshot.data ?? [];
+            if (certificates.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 30),
+                child: Center(child: Text('У вас пока нет сертификатов', style: TextStyle(color: _textGrey))),
+              );
+            }
+            return SizedBox(
+              height: 160,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: certificates.length,
+                itemBuilder: (context, index) {
+                  final cert = certificates[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _buildCertificatePdfCard(context, cert),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildCertificatePdfCard(BuildContext context, CertificateModel certificate) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CertificatePdfViewerScreen(
-              certificateUrl: certificate.certificateUrl,
-              title: 'Сертификат',
-            ),
-          ),
-        );
-      },
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CertificatePdfViewerScreen(certificateUrl: certificate.certificateUrl, title: 'Сертификат'))),
       child: Container(
         width: 180,
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFFEEEEEE))),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              height: 70,
-              width: 70,
-              decoration: BoxDecoration(
-                color: _iconPurpleBackground,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.picture_as_pdf_outlined, color: _primaryPurple, size: 36),
-            ),
+            Container(height: 70, width: 70, decoration: BoxDecoration(color: _iconPurpleBackground, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.picture_as_pdf_outlined, color: _primaryPurple, size: 36)),
             const Spacer(),
-            Text(
-              'Сертификат',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Курс завершен',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: _textGrey, height: 1.2),
-            ),
-            if (certificate.issueDate != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                '${certificate.issueDate!.day.toString().padLeft(2, '0')}-${certificate.issueDate!.month.toString().padLeft(2, '0')}-${certificate.issueDate!.year}',
-                style: const TextStyle(fontSize: 10, color: _textGrey, fontWeight: FontWeight.w500),
-              ),
-            ],
+            const Text('Сертификат', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
           ],
         ),
       ),
@@ -475,64 +432,37 @@ Widget _buildAchievementCard({
   Widget _buildSettingsMenu() {
     return Column(
       children: [
-        _buildMenuItem(
-          icon: Icons.notifications_outlined,
-          title: 'Уведомления',
-          onTap: () {},
-        ),
-        _buildMenuItem(
-          icon: Icons.security_outlined,
-          title: 'Безопасность',
-          onTap: () {},
-        ),
-        _buildMenuItem(
-          icon: Icons.help_outline_rounded,
-          title: 'Помощь',
-          onTap: () {},
-        ),
-        _buildMenuItem(
-          icon: Icons.info_outline_rounded,
-          title: 'О приложении',
-          onTap: () {},
-        ),
+        _buildMenuItem(icon: Icons.security_outlined, title: 'Безопасность', onTap: () => _openPdf('assets/pdf/security.pdf', 'Безопасность')),
+        _buildMenuItem(icon: Icons.help_outline_rounded, title: 'Помощь', onTap: () => _openPdf('assets/pdf/help.pdf', 'Помощь')),
+        _buildMenuItem(icon: Icons.info_outline_rounded, title: 'О приложении', onTap: () => _openPdf('assets/pdf/about.pdf', 'О приложении')),
       ],
     );
   }
 
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
+  void _openPdf(String assetPath, String title) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PdfViewerScreen(assetPath: assetPath, title: title),
+      ),
+    );
+  }
+
+  Widget _buildMenuItem({required IconData icon, required String title, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFEEEEEE))),
         child: Row(
           children: [
             Icon(icon, color: _primaryPurple, size: 24),
             const SizedBox(width: 16),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: _textDark,
-              ),
-            ),
+            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: _textDark)),
             const Spacer(),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: _textGrey,
-              size: 16,
-            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: _textGrey, size: 16),
           ],
         ),
       ),
@@ -543,29 +473,20 @@ Widget _buildAchievementCard({
     return InkWell(
       onTap: () {
         authProvider.logout();
-        if (context.mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-        }
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
       },
-      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFEEEEEE))),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.logout_rounded, color: Color(0xFFFF6B6B), size: 20),
             SizedBox(width: 10),
-            Text(
-              'Выйти из аккаунта',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFF6B6B)),
-            ),
+            Text('Выйти из аккаунта', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFFF6B6B))),
           ],
         ),
       ),
     );
-  }}
+  }
+}

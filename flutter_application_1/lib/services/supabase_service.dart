@@ -8,6 +8,7 @@ import '../models/course_model.dart';
 import '../models/module_model.dart';
 import '../models/test_model.dart';
 import '../models/certificate_model.dart';
+import 'dart:typed_data';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -318,6 +319,53 @@ Future<List<AchievementModel>> getUserAchievements(int userId) async {
   } catch (e) {
     print('Error fetching user achievements: $e');
     return [];
+  }
+}
+
+
+/// Обновить имя пользователя
+Future<bool> updateUserName(int userId, String newName) async {
+  try {
+    await _client
+        .from('users')
+        .update({'name': newName})
+        .eq('id', userId);
+    return true;
+  } catch (e) {
+    print('Error updating user name: $e');
+    return false;
+  }
+}
+
+/// Загрузить аватар в Storage
+Future<String?> uploadAvatar(int userId, Uint8List imageBytes, String extension) async {
+  try {
+    final fileName = 'avatar_${userId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+    
+    await _client.storage
+        .from('avatars')
+        .uploadBinary(fileName, imageBytes,
+            fileOptions: const FileOptions(contentType: 'image/png', upsert: true));
+
+    final url = _client.storage.from('avatars').getPublicUrl(fileName);
+    return url;
+  } catch (e) {
+    print('Error uploading avatar: $e');
+    return null;
+  }
+}
+
+/// Сохранить URL аватара в профиле
+Future<bool> updateUserAvatar(int userId, String avatarUrl) async {
+  try {
+    await _client
+        .from('users')
+        .update({'avatar': avatarUrl})
+        .eq('id', userId);
+    return true;
+  } catch (e) {
+    print('Error updating avatar: $e');
+    return false;
   }
 }
 
