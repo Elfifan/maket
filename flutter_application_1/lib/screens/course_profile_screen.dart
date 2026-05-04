@@ -32,6 +32,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
   bool _isPurchasing = false;
   bool _isEnrolled = false;
   bool _hasCertificate = false;
+  int _selectedTabIndex = 0;
 
   // Константы дизайна
   static const Color _textDark = Color(0xFF1E1E2E);
@@ -239,19 +240,17 @@ for (final module in _courseStructure) {
                   ),
                 
                 const SizedBox(height: 32),
-                
-                // 3. Список модулей
-                _loading 
-                  ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
-                  : _buildModulesList(),
-
+                _buildTabSelector(),
                 const SizedBox(height: 24),
-
-                // 4. Отзывы внизу страницы курса
-                CourseReviewsSection(
-                  courseId: widget.course.id,
-                  isEnrolled: _isEnrolled,
-                ),
+                if (_selectedTabIndex == 0)
+                  (_loading
+                      ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
+                      : _buildModulesList())
+                else
+                  CourseReviewsSection(
+                    courseId: widget.course.id,
+                    isEnrolled: _isEnrolled,
+                  ),
               ],
             ),
           ),
@@ -357,6 +356,58 @@ for (final module in _courseStructure) {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTabSelector() {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _selectedTabIndex = 0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: _selectedTabIndex == 0 ? _primaryPurple : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _selectedTabIndex == 0 ? _primaryPurple : Colors.grey.shade300),
+              ),
+              child: Center(
+                child: Text(
+                  'Модули',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: _selectedTabIndex == 0 ? Colors.white : _textDark,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _selectedTabIndex = 1),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: _selectedTabIndex == 1 ? _primaryPurple : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _selectedTabIndex == 1 ? _primaryPurple : Colors.grey.shade300),
+              ),
+              child: Center(
+                child: Text(
+                  'Отзывы',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: _selectedTabIndex == 1 ? Colors.white : _textDark,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
