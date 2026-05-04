@@ -239,24 +239,6 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
 
   Future<List<TestModel>> getTestsBySubmodule(int submoduleId) async {
     try {
-      final response = await _client
-          .from('test')
-          .select()
-          .eq('id_submodule', submoduleId)
-          .order('id', ascending: true);
-
-      final tests = List<Map<String, dynamic>>.from(response)
-          .map((json) => TestModel.fromJson(json))
-          .toList();
-
-      if (tests.isNotEmpty) {
-        return tests;
-      } 
-    } catch (e) {
-      print('Direct test query failed: $e');
-    }
-
-    try {
       final joinResponse = await _client
           .from('submodule_test')
           .select('test(*)')

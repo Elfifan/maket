@@ -15,6 +15,7 @@ class CoursesScreen extends StatefulWidget {
 class _CoursesScreenState extends State<CoursesScreen> {
   final List<CourseModel> _allCourses = [];
   List<CourseModel> _displayCourses = [];
+  List<CourseModel> _myCourses = [];
   bool _loading = false;
   String _activeFilter = 'Все';
 
@@ -25,22 +26,8 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
   final List<Map<String, dynamic>> _categories = [
     {'label': 'Все', 'icon': Icons.grid_view_rounded},
-    {'label': 'Python', 'icon': Icons.code_rounded},
-    {'label': 'Frontend', 'icon': Icons.laptop_chromebook_rounded},
+    {'label': 'Мои курсы', 'icon': Icons.book_rounded},
   ];
-
-  IconData _getIcon(String? iconName) {
-    switch (iconName?.toLowerCase()) {
-      case 'code':
-        return Icons.code;
-      case 'laptop':
-        return Icons.laptop;
-      case 'grid':
-        return Icons.grid_view;
-      default:
-        return Icons.help_outline;
-    }
-  }
 
   @override
   void initState() {
@@ -52,10 +39,23 @@ class _CoursesScreenState extends State<CoursesScreen> {
     setState(() => _loading = true);
     await SupabaseService().initialize();
     try {
-      final list = await SupabaseService().getCourses();
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // Загружаем все активные курсы
+      final allCourses = await SupabaseService().getCourses();
+      
+      // Загружаем курсы пользователя
+      List<CourseModel> myCourses = [];
+      if (authProvider.currentUser != null) {
+        myCourses = await SupabaseService().getUserCourses(
+          userId: authProvider.currentUser!.id!,
+        );
+      }
+
       setState(() {
         _allCourses.clear();
-        _allCourses.addAll(list);
+        _allCourses.addAll(allCourses);
+        _myCourses = myCourses;
         _applyFilter('Все');
       });
     } catch (e) {
@@ -70,10 +70,8 @@ class _CoursesScreenState extends State<CoursesScreen> {
       _activeFilter = categoryLabel;
       if (categoryLabel == 'Все') {
         _displayCourses = List.from(_allCourses);
-      } else {
-        _displayCourses = _allCourses
-            .where((c) => c.name.toLowerCase().contains(categoryLabel.toLowerCase()))
-            .toList();
+      } else if (categoryLabel == 'Мои курсы') {
+        _displayCourses = List.from(_myCourses);
       }
     });
   }
@@ -81,14 +79,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final userName = authProvider.currentUser?.email?.split('@')[0] ?? 'Кирилл';
+    final userName = authProvider.currentUser?.name ?? 
+                     authProvider.currentUser?.email?.split('@')[0] ?? 
+                     'Пользователь';
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _buildAppBar(),
       body: _loading 
         ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
-        : CustomScrollView( // Используем CustomScrollView для общей прокрутки
+        : CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(
@@ -99,8 +99,15 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     children: [
                       Row(
                         children: [
-                          Text('Доброе утро,\n$userName',
-                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: _textDark, height: 1.2)),
+                          Text(
+                            'Доброе утро,\n$userName',
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: _textDark,
+                              height: 1.2,
+                            ),
+                          ),
                           const SizedBox(width: 8),
                           const Text('👏', style: TextStyle(fontSize: 26)),
                         ],
@@ -111,8 +118,14 @@ class _CoursesScreenState extends State<CoursesScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Направления', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark)),
-                          TextButton(onPressed: () {}, child: const Text('См. все', style: TextStyle(color: _primaryPurple, fontWeight: FontWeight.w600))),
+                          const Text(
+                            'Направления',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: _textDark,
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -121,7 +134,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 ),
               ),
               
-              // Горизонтальные категории
               SliverToBoxAdapter(
                 child: SizedBox(
                   height: 45,
@@ -129,7 +141,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: _categories.length,
-                    itemBuilder: (context, index) => _buildCategoryChip(_categories[index]['label'], _categories[index]['icon']),
+                    itemBuilder: (context, index) => _buildCategoryChip(
+                      _categories[index]['label'],
+                      _categories[index]['icon'],
+                    ),
                   ),
                 ),
               ),
@@ -139,35 +154,66 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
                   child: Row(
                     children: [
-                      const Text('Новые курсы', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark)),
+                      Text(
+                        _activeFilter == 'Мои курсы' ? 'Мои курсы' : 'Новые курсы',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: _textDark,
+                        ),
+                      ),
                       const SizedBox(width: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: _bgLightGrey, borderRadius: BorderRadius.circular(8)),
-                        child: const Text('ТОП-10', style: TextStyle(color: _textGrey, fontSize: 11, fontWeight: FontWeight.w600)),
+                        decoration: BoxDecoration(
+                          color: _bgLightGrey,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${_displayCourses.length}',
+                          style: const TextStyle(
+                            color: _textGrey,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
 
-              // Сетка курсов, которая является частью общего списка прокрутки
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.75,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _buildCourseCard(_displayCourses[index]),
-                    childCount: _displayCourses.length,
-                  ),
-                ),
+                sliver: _displayCourses.isEmpty
+                    ? const SliverToBoxAdapter(
+                        child: Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(40),
+                            child: Text(
+                              'Курсы не найдены',
+                              style: TextStyle(
+                                color: _textGrey,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    : SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.75,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _buildCourseCard(_displayCourses[index]),
+                          childCount: _displayCourses.length,
+                        ),
+                      ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 30)), // Отступ снизу
+              const SliverToBoxAdapter(child: SizedBox(height: 30)),
             ],
           ),
     );
@@ -183,11 +229,21 @@ class _CoursesScreenState extends State<CoursesScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: _textDark, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+              color: _textDark,
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: const Icon(Icons.bolt, color: Colors.white, size: 20),
           ),
           const SizedBox(width: 10),
-          const Text('Кодикс', style: TextStyle(color: _textDark, fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text(
+            'Кодикс',
+            style: TextStyle(
+              color: _textDark,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
       bottom: PreferredSize(
@@ -198,12 +254,26 @@ class _CoursesScreenState extends State<CoursesScreen> {
   }
 
   Widget _buildPathBanner() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    // Находим первый курс пользователя для отображения в "текущем пути"
+    String courseName = _myCourses.first.name;
+    String progressText = '0%';
+    
+    if (_myCourses.isNotEmpty) {
+      courseName = _myCourses.first.name;
+      // Можно добавить реальный прогресс
+      progressText = 'Продолжить';
+    }
+
     return Container(
       width: double.infinity,
       height: 160,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(colors: [Color(0xFFBCAFFF), _primaryPurple]),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFBCAFFF), _primaryPurple],
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -211,23 +281,61 @@ class _CoursesScreenState extends State<CoursesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Column(
+             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('ТЕКУЩИЙ ПУТЬ', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                Text(
+                  'ТЕКУЩИЙ ПУТЬ',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
                 SizedBox(height: 6),
-                Text('Путь Fullstack\nразработчика', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, height: 1.2)),
+                Text(
+                  courseName,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                  ),
+                ),
               ],
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
-                  child: const Text('Продолжить', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                GestureDetector(
+                  onTap: () {
+                    if (_myCourses.isNotEmpty) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CourseProfileScreen(course: _myCourses.first),
+                        ),
+                      );
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _myCourses.isNotEmpty ? 'Продолжить' : 'Выбрать курс',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ),
-                const Text('64%', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+
               ],
             ),
           ],
@@ -243,37 +351,96 @@ class _CoursesScreenState extends State<CoursesScreen> {
       child: Container(
         margin: const EdgeInsets.only(left: 20),
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(color: isSelected ? _primaryPurple : _bgLightGrey, borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(
+          color: isSelected ? _primaryPurple : _bgLightGrey,
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Row(
           children: [
-            Icon(icon, size: 16, color: isSelected ? Colors.white : _textDark),
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? Colors.white : _textDark,
+            ),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(color: isSelected ? Colors.white : _textDark, fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : _textDark,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
+Widget _buildCourseIcon(String? icon) {
+  if (icon == null || icon.isEmpty) {
+    return Icon(
+      Icons.school,
+      color: _primaryPurple.withOpacity(0.3),
+      size: 48,
+    );
+  }
+
+  if (icon.startsWith('http')) {
+    return Image.network(
+      icon,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Text(
+        '📚',
+        style: TextStyle(fontSize: 48),
+      ),
+    );
+  }
+
+  return Container(
+    width: 70,
+    height: 70,
+    decoration: BoxDecoration(
+      color: _primaryPurple.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Center(
+      child: Text(
+        icon,
+        style: const TextStyle(fontSize: 36),
+      ),
+    ),
+  );
+}
+
   Widget _buildCourseCard(CourseModel course) {
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourseProfileScreen(course: course))),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => CourseProfileScreen(course: course)),
+      ),
       child: Container(
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))]),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(color: _bgLightGrey, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                decoration: const BoxDecoration(
+                  color: _bgLightGrey,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
                 child: Center(
-                  child: course.icon != null && course.icon!.isNotEmpty
-                    ? Image.network(
-                        course.icon!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Icon(_getIcon(course.icon), color: _textGrey),
-                      )
-                    : Icon(_getIcon(course.icon), color: _textGrey),
+                  child: _buildCourseIcon(course.icon),
                 ),
               ),
             ),
@@ -282,13 +449,35 @@ class _CoursesScreenState extends State<CoursesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(course.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
+                  Text(
+                    course.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: _textDark,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('12 уроков', style: TextStyle(fontSize: 11, color: _textGrey)),
-                      Text('${course.price?.toInt() ?? 0} ₽', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _primaryPurple)),
+                      Text(
+                        '${course.complexity ?? 1} уровень',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: _textGrey,
+                        ),
+                      ),
+                      Text(
+                        '${course.price?.toInt() ?? 0} ₽',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: _primaryPurple,
+                        ),
+                      ),
                     ],
                   ),
                 ],
