@@ -6,10 +6,12 @@ import '../models/test_model.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/certificate_service.dart';
+import '../services/chat_service.dart';
 import '../services/supabase_service.dart';
 import 'course_reviews_section.dart';
 import 'submodule_content_screen.dart';
 import 'tests_screen.dart';
+import 'user_chat_screen.dart';
 import 'practical_task_screen.dart';
 
 class CourseProfileScreen extends StatefulWidget {
@@ -223,6 +225,8 @@ for (final module in _courseStructure) {
                 // 1. Большой баннер курса
                 _buildCourseBanner(),
                 
+                const SizedBox(height: 20),
+                _buildContactAuthorButton(),
                 const SizedBox(height: 24),
                 
                 // 2. Описание курса
@@ -671,6 +675,60 @@ Widget _buildActionButton() {
     onPressed: _isPurchasing ? null : _handlePurchase,
     isAccent: true,
   );
+}
+
+Widget _buildContactAuthorButton() {
+  return SizedBox(
+    width: double.infinity,
+    child: OutlinedButton.icon(
+      onPressed: _contactAuthor,
+      icon: const Icon(Icons.person_search_rounded, color: Color(0xFFA58EFF)),
+      label: const Text('Связаться с автором', style: TextStyle(color: Color(0xFFA58EFF), fontWeight: FontWeight.w600)),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Color(0xFFA58EFF)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        backgroundColor: Colors.white,
+      ),
+    ),
+  );
+}
+
+Future<void> _contactAuthor() async {
+  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+  if (authProvider.currentUser == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Пожалуйста, войдите в аккаунт, чтобы начать чат с автором')),
+    );
+    return;
+  }
+
+  final roomId = await ChatService().getOrCreateChatRoom(
+    authProvider.currentUser!.id!,
+    widget.course.id,
+  );
+
+  if (roomId == null) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть чат, попробуйте позже')), 
+      );
+    }
+    return;
+  }
+
+  if (mounted) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UserChatScreen(
+          roomId: roomId,
+          userId: authProvider.currentUser!.id!,
+          courseName: widget.course.name,
+        ),
+      ),
+    );
+  }
 }
 
 // Вспомогательный метод для стилизации кнопок
