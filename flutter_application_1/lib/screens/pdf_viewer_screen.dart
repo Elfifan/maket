@@ -54,7 +54,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                 autoSpacing: false,
                 pageSnap: false,
                 fitPolicy: FitPolicy.BOTH,
-                onError: (error) => print(error.toString()),
+                onError: (error) => debugPrint(error.toString()),
               ),
             )
           : const Center(child: CircularProgressIndicator()),

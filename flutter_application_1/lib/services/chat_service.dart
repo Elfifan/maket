@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/chat_models.dart';
 
@@ -37,7 +38,7 @@ class ChatService {
 
       return newRoom['id'] as int;
     } catch (e) {
-      print('Error creating chat room: $e');
+      debugPrint('Error creating chat room: $e');
       return null;
     }
   }
@@ -58,7 +59,7 @@ class ChatService {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('Error getting user chat rooms: $e');
+      debugPrint('Error getting user chat rooms: $e');
       return [];
     }
   }
@@ -76,7 +77,7 @@ class ChatService {
           .map((json) => ChatMessageModel.fromJson(json))
           .toList();
     } catch (e) {
-      print('Error getting chat messages: $e');
+      debugPrint('Error getting chat messages: $e');
       return [];
     }
   }
@@ -104,13 +105,13 @@ class ChatService {
 
       return ChatMessageModel.fromJson(response);
     } catch (e) {
-      print('Error sending message: $e');
+      debugPrint('Error sending message: $e');
       return null;
     }
   }
 
   /// Подписка на новые сообщения в реальном времени
-Stream<ChatMessageModel> subscribeToChatMessages(int roomId) {
+  Stream<ChatMessageModel> subscribeToChatMessages(int roomId) {
     final channel = _client.channel(
       'chat-room-$roomId',
       opts: const RealtimeChannelConfig(),
@@ -133,16 +134,16 @@ Stream<ChatMessageModel> subscribeToChatMessages(int roomId) {
           final message = ChatMessageModel.fromJson(json);
           controller.add(message);
         } catch (e) {
-          print('Error parsing realtime message: $e');
+          debugPrint('Error parsing realtime message: $e');
         }
       },
     );
 
     channel.subscribe((status, _) {
       if (status == RealtimeSubscribeStatus.subscribed) {
-        print('✅ Subscribed to chat room $roomId');
+        debugPrint('✅ Subscribed to chat room $roomId');
       } else {
-        print('❌ Subscription error: $status');
+        debugPrint('❌ Subscription error: $status');
       }
     });
 
@@ -167,7 +168,7 @@ Stream<ChatMessageModel> subscribeToChatMessages(int roomId) {
 
       return response != null ? Map<String, dynamic>.from(response) : null;
     } catch (e) {
-      print('Error getting last message: $e');
+      debugPrint('Error getting last message: $e');
       return null;
     }
   }
@@ -182,7 +183,7 @@ Stream<ChatMessageModel> subscribeToChatMessages(int roomId) {
           .neq('sender_type', senderType)
           .eq('is_read', false);
     } catch (e) {
-      print('Error marking messages as read: $e');
+      debugPrint('Error marking messages as read: $e');
     }
   }
 
@@ -211,12 +212,8 @@ Stream<ChatMessageModel> subscribeToChatMessages(int roomId) {
 
       return List<Map<String, dynamic>>.from(response).length;
     } catch (e) {
-      print('Error getting unread count: $e');
+      debugPrint('Error getting unread count: $e');
       return 0;
     }
   }
-
-
-  
 }
-

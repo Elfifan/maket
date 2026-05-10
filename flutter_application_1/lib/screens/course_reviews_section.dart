@@ -138,7 +138,7 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
                     rating: rating,
                     description: description,
                   );
-                  if (mounted) {
+                  if (context.mounted) {
                     Navigator.pop(context);
                     if (success) {
                       final currentCount = _reviews.length;
@@ -183,21 +183,7 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
     );
   }
 
-  String _formatDate(String? dateStr) {
-    if (dateStr == null) return '';
-    try {
-      final date = DateTime.parse(dateStr);
-      final now = DateTime.now();
-      final diff = now.difference(date);
-      
-      if (diff.inDays == 0) return 'Сегодня';
-      if (diff.inDays == 1) return 'Вчера';
-      if (diff.inDays < 7) return '${diff.inDays} дн. назад';
-      return '${date.day}.${date.month}.${date.year}';
-    } catch (e) {
-      return '';
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +254,7 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.rate_review_outlined, size: 48, color: _textGrey.withOpacity(0.3)),
+                  Icon(Icons.rate_review_outlined, size: 48, color: _textGrey.withValues(alpha: 0.3)),
                   const SizedBox(height: 12),
                   Text('Пока нет отзывов', style: GoogleFonts.roboto(color: _textGrey, fontSize: 14)),
                   const SizedBox(height: 4),

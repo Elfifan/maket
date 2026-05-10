@@ -6,7 +6,7 @@ import '../models/practical_task_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/judge0_service.dart';
 import '../services/supabase_service.dart';
-import 'submodule_content_screen.dart';
+
 
 class PracticalTaskScreen extends StatefulWidget {
   final PracticalTaskModel task;
@@ -36,7 +36,6 @@ class _PracticalTaskScreenState extends State<PracticalTaskScreen> {
   final ScrollController _scrollController = ScrollController();
 
   static const Color _primaryPurple = Color(0xFFA58EFF);
-  static const Color _accentPink = Color(0xFFF2C9D4);
   static const Color _textDark = Color(0xFF1E1E2E);
   static const Color _textGrey = Color(0xFF9094A6);
   static const Color _bgLight = Color(0xFFF8F9FB);
@@ -141,9 +140,9 @@ Future<void> _runTests() async {
       );
     } catch (e) {
       if (e.toString().contains('401')) {
-      print('Ошибка: Пользователь не авторизован или ключ API неверен');
-        }
-      print('Error saving practical task result: $e');
+        debugPrint('Ошибка: Пользователь не авторизован или ключ API неверен');
+      }
+      debugPrint('Error saving practical task result: $e');
     }
   }
 
@@ -177,7 +176,7 @@ Future<void> _runTests() async {
                 ),
               ],
             ),
-            if (result.stdout != null && result.stdout!.isNotEmpty) ...[
+            if (result.stdout.isNotEmpty) ...[
               const SizedBox(height: 16),
               Text('Вывод:', style: TextStyle(color: _textGrey, fontSize: 13)),
               const SizedBox(height: 8),
@@ -189,7 +188,7 @@ Future<void> _runTests() async {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: SelectableText(
-                  result.stdout!,
+                  result.stdout,
                   style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
                 ),
               ),
@@ -202,7 +201,7 @@ Future<void> _runTests() async {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.05),
+                  color: Colors.red.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -230,35 +229,7 @@ Future<void> _runTests() async {
     );
   }
 
-  void _goToNext() {
-    if (widget.allSubmodules != null && 
-        widget.currentIndex >= 0 && 
-        widget.currentIndex + 1 < widget.allSubmodules!.length) {
-      final next = widget.allSubmodules![widget.currentIndex + 1];
-      final nextContentUrl = next['content'] as String?;
-      
-      if (nextContentUrl != null && nextContentUrl.isNotEmpty) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SubmoduleContentScreen(
-              title: next['name'] ?? 'Следующий урок',
-              contentUrl: nextContentUrl,
-              submoduleId: next['id'] as int,
-              courseId: widget.courseId,
-              courseName: widget.courseName,
-              allSubmodules: widget.allSubmodules,
-              currentIndex: widget.currentIndex + 1,
-              submoduleTests: null,
-              practicalTasks: widget.practicalTasks,
-            ),
-          ),
-        );
-        return;
-      }
-    }
-    Navigator.pop(context, true);
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -302,7 +273,7 @@ Future<void> _runTests() async {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
+                            color: Colors.black.withValues(alpha: 0.04),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -363,7 +334,7 @@ Future<void> _runTests() async {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -384,7 +355,7 @@ Future<void> _runTests() async {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -440,7 +411,7 @@ Future<void> _runTests() async {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.2),
+                      color: Colors.green.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Row(
@@ -492,7 +463,7 @@ Future<void> _runTests() async {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -535,10 +506,10 @@ Future<void> _runTests() async {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: result.passed ? Colors.green.withOpacity(0.05) : Colors.red.withOpacity(0.05),
+        color: result.passed ? Colors.green.withValues(alpha: 0.05) : Colors.red.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: result.passed ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+          color: result.passed ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
         ),
       ),
       child: Column(

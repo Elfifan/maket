@@ -84,11 +84,12 @@ class _TestsScreenState extends State<TestsScreen> {
           );
         }
       } catch (e) {
-        print('Error saving test result: $e');
+        debugPrint('Error saving test result: $e');
         // Продолжаем показывать результаты, даже если сохранение не удалось
       }
     }
 
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -200,8 +201,10 @@ class _TestsScreenState extends State<TestsScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: RadioListTile<String>(
                   value: option,
+                  // ignore: deprecated_member_use
                   groupValue: _selectedAnswer,
                   title: Text(option, style: const TextStyle(fontSize: 16)),
+                  // ignore: deprecated_member_use
                   onChanged: _isAnswered
                       ? null
                       : (value) {

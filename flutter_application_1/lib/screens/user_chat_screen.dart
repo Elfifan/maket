@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/auth_provider.dart';
 import '../models/chat_models.dart';
 import '../services/chat_service.dart';
 
@@ -78,7 +81,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
             }
           },
           onError: (error) {
-            print('Realtime error: $error');
+            debugPrint('Realtime error: $error');
           },
         );
   }
@@ -219,13 +222,13 @@ class _UserChatScreenState extends State<UserChatScreen> {
                               width: 80,
                               height: 80,
                               decoration: BoxDecoration(
-                                color: _primaryPurple.withOpacity(0.1),
+                                color: _primaryPurple.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(24),
                               ),
                               child: Icon(
                                 Icons.chat_bubble_outline_rounded,
                                 size: 40,
-                                color: _primaryPurple.withOpacity(0.5),
+                                color: _primaryPurple.withValues(alpha: 0.5),
                               ),
                             ),
                             const SizedBox(height: 24),
@@ -250,12 +253,19 @@ class _UserChatScreenState extends State<UserChatScreen> {
                       )
                     : ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) {
                           final msg = _messages[index];
                           final isMe = msg.senderType == 'user';
-                          return _buildMessageBubble(msg, isMe);
+                          
+                          // Показываем аватар только если это первое сообщение в блоке или тип отправителя сменился
+                          bool showAvatar = true;
+                          if (index > 0) {
+                            showAvatar = _messages[index - 1].senderType != msg.senderType;
+                          }
+
+                          return _buildMessageBubble(msg, isMe, showAvatar);
                         },
                       ),
           ),
@@ -266,78 +276,124 @@ class _UserChatScreenState extends State<UserChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessageModel msg, bool isMe) {
+  Widget _buildMessageBubble(ChatMessageModel msg, bool isMe, bool showAvatar) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final time = msg.createdAt != null
         ? '${msg.createdAt!.hour.toString().padLeft(2, '0')}:${msg.createdAt!.minute.toString().padLeft(2, '0')}'
         : '';
 
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: isMe
-              ? const LinearGradient(
-                  colors: [_primaryPurple, _accentPink],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isMe ? null : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(20),
-            topRight: const Radius.circular(20),
-            bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(4),
-            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(20),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isMe
-                  ? _primaryPurple.withOpacity(0.3)
-                  : Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: isMe ? const Offset(0, 4) : const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Text(
-              msg.message,
-              style: TextStyle(
-                color: isMe ? Colors.white : _textDark,
-                fontSize: 15,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  time,
-                  style: TextStyle(
-                    color: isMe ? Colors.white.withOpacity(0.7) : _textGrey,
-                    fontSize: 11,
-                  ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isMe) ...[
+            if (showAvatar)
+              Container(
+                width: 32,
+                height: 32,
+                decoration: const BoxDecoration(
+                  color: _primaryPurple,
+                  shape: BoxShape.circle,
                 ),
-                if (isMe) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.check,
-                    size: 14,
-                    color: Colors.white.withOpacity(0.7),
+                child: const Center(child: Icon(Icons.school, size: 18, color: Colors.white)),
+              )
+            else
+              const SizedBox(width: 32),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.7,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: isMe
+                    ? const LinearGradient(
+                        colors: [_primaryPurple, _accentPink],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: isMe ? null : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: isMe ? const Radius.circular(20) : const Radius.circular(4),
+                  bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(20),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isMe
+                        ? _primaryPurple.withValues(alpha: 0.3)
+                        : Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: isMe ? const Offset(0, 4) : const Offset(0, 2),
                   ),
                 ],
-              ],
+              ),
+              child: Column(
+                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    msg.message,
+                    style: TextStyle(
+                      color: isMe ? Colors.white : _textDark,
+                      fontSize: 15,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        time,
+                        style: TextStyle(
+                          color: isMe ? Colors.white.withValues(alpha: 0.7) : _textGrey,
+                          fontSize: 11,
+                        ),
+                      ),
+                      if (isMe) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.check,
+                          size: 14,
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
             ),
+          ),
+          if (isMe) ...[
+            const SizedBox(width: 8),
+            if (showAvatar)
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  shape: BoxShape.circle,
+                ),
+                child: ClipOval(
+                  child: authProvider.currentUser?.avatarUrl != null && authProvider.currentUser!.avatarUrl!.isNotEmpty
+                      ? Image.network(
+                          authProvider.currentUser!.avatarUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const Icon(Icons.person, size: 18, color: _textGrey),
+                        )
+                      : const Icon(Icons.person, size: 18, color: _textGrey),
+                ),
+              )
+            else
+              const SizedBox(width: 32),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -392,7 +448,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: _primaryPurple.withOpacity(0.4),
+                      color: _primaryPurple.withValues(alpha: 0.4),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),

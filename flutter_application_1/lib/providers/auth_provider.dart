@@ -25,7 +25,7 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return _currentUser != null;
     } catch (e) {
-      print('Login error in provider: $e');
+      debugPrint('Login error in provider: $e');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -48,7 +48,7 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      print('Registration error in provider: $e');
+      debugPrint('Registration error in provider: $e');
       _isLoading = false;
       notifyListeners();
       return e.toString().replaceFirst('Exception: ', '');
@@ -71,7 +71,7 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      print('Error refreshing user in provider: $e');
+      debugPrint('Error refreshing user in provider: $e');
       _isLoading = false;
       notifyListeners();
       return false;

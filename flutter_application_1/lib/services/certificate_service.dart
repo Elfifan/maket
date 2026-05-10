@@ -1,9 +1,7 @@
-import 'dart:io';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/certificate_model.dart';
@@ -51,7 +49,7 @@ class CertificateService {
 
       return certificate;
     } catch (e) {
-      print('Error generating certificate: $e');
+      debugPrint('Error generating certificate: $e');
       return null;
     }
   }
@@ -72,7 +70,7 @@ class CertificateService {
 
       return Map<String, dynamic>.from(response.first as Map<String, dynamic>);
     } catch (e) {
-      print('Error finding certificate row: $e');
+      debugPrint('Error finding certificate row: $e');
       return null;
     }
   }
@@ -275,9 +273,9 @@ class CertificateService {
       final publicUrl = bucket.getPublicUrl(fileName);
       return publicUrl;
     } catch (e) {
-      print('Error uploading PDF: $e');
+      debugPrint('Error uploading PDF: $e');
       if (e.toString().contains('Bucket not found')) {
-        print('Please create a bucket named "certificates" in Supabase Storage with public access.');
+        debugPrint('Please create a bucket named "certificates" in Supabase Storage with public access.');
       }
       return null;
     }
@@ -304,7 +302,7 @@ class CertificateService {
 
       return CertificateModel.fromJson(response);
     } catch (e) {
-      print('Error creating certificate record: $e');
+      debugPrint('Error creating certificate record: $e');
       return null;
     }
   }
@@ -314,7 +312,7 @@ class CertificateService {
       final row = await _findCertificateRow(userId, courseId);
       return row != null;
     } catch (e) {
-      print('Error checking certificate: $e');
+      debugPrint('Error checking certificate: $e');
       return false;
     }
   }

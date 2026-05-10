@@ -80,13 +80,13 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: _primaryPurple.withOpacity(0.1),
+                          color: _primaryPurple.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Icon(
                           Icons.chat_bubble_outline_rounded,
                           size: 40,
-                          color: _primaryPurple.withOpacity(0.5),
+                          color: _primaryPurple.withValues(alpha: 0.5),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -129,7 +129,7 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -169,7 +169,7 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
                                       borderRadius: BorderRadius.circular(18),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: _primaryPurple.withOpacity(0.3),
+                                          color: _primaryPurple.withValues(alpha: 0.3),
                                           blurRadius: 10,
                                           offset: const Offset(0, 4),
                                         ),

@@ -1,6 +1,6 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'dart:io';
 
 import 'package:uuid/uuid.dart';
 
@@ -33,15 +33,15 @@ class AiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         _accessToken = data['access_token'];
-print('СТАТУС: ${response.statusCode}');
-  print('ОТВЕТ: ${response.body}');
+        debugPrint('СТАТУС: ${response.statusCode}');
+        debugPrint('ОТВЕТ: ${response.body}');
         _tokenExpiry = DateTime.now().add(const Duration(minutes: 25)); 
         return _accessToken;
       } else {
-        print('Ошибка GigaAuth: ${response.statusCode} - ${response.body}');
+        debugPrint('Ошибка GigaAuth: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Исключение при получении токена: $e');
+      debugPrint('Исключение при получении токена: $e');
     }
     return null;
   }

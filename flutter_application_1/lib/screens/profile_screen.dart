@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -45,14 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final userName = user.name ?? user.email?.split('@')[0] ?? 'Пользователь';
     
-    // Получаем URL аватара
-    String? avatarUrl;
-    if (user.avatar != null && user.avatar!.isNotEmpty) {
-      final avatarStr = String.fromCharCodes(user.avatar!);
-      if (avatarStr.startsWith('http')) {
-        avatarUrl = avatarStr;
-      }
-    }
+    final avatarUrl = user.avatarUrl;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -114,15 +107,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onTap: _changeAvatar,
             child: Stack(
               children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.grey[200],
-                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                      ? NetworkImage(avatarUrl)
-                      : null,
-                  child: avatarUrl == null || avatarUrl.isEmpty
-                      ? const Icon(Icons.person, size: 50, color: Colors.white)
-                      : null,
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: _primaryPurple.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: avatarUrl != null && avatarUrl.isNotEmpty
+                        ? Image.network(
+                            avatarUrl,
+                            width: 100,
+                            height: 100,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  color: _primaryPurple,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.person, size: 50, color: _textGrey),
+                          )
+                        : const Icon(Icons.person, size: 50, color: _textGrey),
+                  ),
                 ),
                 Positioned(
                   bottom: 0,
@@ -265,22 +286,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final url = await SupabaseService().uploadAvatar(user.id!, bytes, ext);
       if (url != null) {
-        await SupabaseService().updateUserAvatar(user.id!, url);
-        await authProvider.refreshCurrentUser();
-        if (mounted) {
-          Navigator.pop(context); // Закрываем индикатор
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Аватар обновлен'), backgroundColor: Colors.green),
-          );
+        final success = await SupabaseService().updateUserAvatar(user.id!, url);
+        if (success) {
+          await authProvider.refreshCurrentUser();
+          if (mounted) {
+            Navigator.pop(context); // Закрываем индикатор
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Аватар обновлен'), backgroundColor: Colors.green),
+            );
+          }
+        } else {
+          if (mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ошибка сохранения ссылки в БД'), backgroundColor: Colors.red),
+            );
+          }
         }
       } else {
-        if (mounted) Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ошибка загрузки файла в Storage'), backgroundColor: Colors.red),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context);
+        if (Navigator.canPop(context)) Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Ошибка: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     }
@@ -356,7 +395,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? Image.network(
                       imageUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.emoji_events_outlined, color: _primaryPurple, size: 36),
+                      errorBuilder: (_, _, _) => const Icon(Icons.emoji_events_outlined, color: _primaryPurple, size: 36),
                     )
                   : const Icon(Icons.emoji_events_outlined, color: _primaryPurple, size: 36),
             ),

@@ -214,11 +214,12 @@ void initState() {
     try {
       await SupabaseService().saveSubmoduleProgress(authProvider.currentUser!.id!, widget.submoduleId);
     } catch (e) {
-      print('Error saving submodule progress: $e');
+      debugPrint('Error saving submodule progress: $e');
     }
 
     // Проверяем, есть ли тесты для текущего подмодуля и проходим их
     final tests = widget.submoduleTests?[widget.submoduleId];
+    if (!mounted) return;
     if (tests != null && tests.isNotEmpty) {
       final result = await Navigator.push(
         context,
@@ -237,9 +238,11 @@ void initState() {
 
       if (result != true) {
         // Тесты не пройдены
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Пройдите тесты, чтобы завершить курс')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Пройдите тесты, чтобы завершить курс')),
+          );
+        }
         return;
       }
     }
@@ -291,7 +294,7 @@ void initState() {
       try {
         await SupabaseService().saveSubmoduleProgress(authProvider.currentUser!.id!, widget.submoduleId);
       } catch (e) {
-        print('Error saving submodule progress: $e');
+        debugPrint('Error saving submodule progress: $e');
         // Продолжаем, даже если сохранение не удалось
       }
     }
@@ -299,6 +302,7 @@ void initState() {
     // Сначала проверяем, есть ли тесты для текущего подмодуля
     final tests = widget.submoduleTests?[widget.submoduleId];
     if (tests != null && tests.isNotEmpty) {
+      if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -323,12 +327,15 @@ void initState() {
 
     final nextContentUrl = next['content'] as String?;
     if (nextContentUrl == null || nextContentUrl.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Содержимое следующего урока недоступно')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Содержимое следующего урока недоступно')),
+        );
+      }
       return;
     }
 
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -461,6 +468,7 @@ void initState() {
           }
         }
       },
+      // ignore: deprecated_member_use
       imageBuilder: (uri, title, alt) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),

@@ -39,6 +39,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     setState(() => _loading = true);
     await SupabaseService().initialize();
     try {
+      if (!mounted) return;
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
       // Загружаем все активные курсы
@@ -61,7 +62,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     } catch (e) {
       debugPrint('Ошибка: $e');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (context.mounted) setState(() => _loading = false);
     }
   }
 
@@ -220,6 +221,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final authProvider = Provider.of<AuthProvider>(context);
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -244,6 +246,30 @@ class _CoursesScreenState extends State<CoursesScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () {
+              // Можно добавить переход в профиль или просто оставить как декор
+            },
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: _bgLightGrey,
+                shape: BoxShape.circle,
+                border: Border.all(color: _primaryPurple.withValues(alpha: 0.3), width: 1),
+              ),
+              child: ClipOval(
+                child: authProvider.currentUser?.avatarUrl != null && authProvider.currentUser!.avatarUrl!.isNotEmpty
+                    ? Image.network(
+                        authProvider.currentUser!.avatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(Icons.person, size: 20, color: _textGrey),
+                      )
+                    : const Icon(Icons.person, size: 20, color: _textGrey),
+              ),
+            ),
+          ),
         ],
       ),
       bottom: PreferredSize(
@@ -254,16 +280,11 @@ class _CoursesScreenState extends State<CoursesScreen> {
   }
 
   Widget _buildPathBanner() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
     // Находим первый курс пользователя для отображения в "текущем пути"
     String courseName = 'Начни уже изучать';
-    String progressText = '0%';
     
     if (_myCourses.isNotEmpty) {
       courseName = _myCourses.first.name;
-      // Можно добавить реальный прогресс
-      progressText = 'Продолжить';
     }
 
     return Container(
@@ -380,7 +401,7 @@ Widget _buildCourseIcon(String? icon) {
   if (icon == null || icon.isEmpty) {
     return Icon(
       Icons.school,
-      color: _primaryPurple.withOpacity(0.3),
+      color: _primaryPurple.withValues(alpha: 0.3),
       size: 48,
     );
   }
@@ -400,7 +421,7 @@ Widget _buildCourseIcon(String? icon) {
     width: 70,
     height: 70,
     decoration: BoxDecoration(
-      color: _primaryPurple.withOpacity(0.1),
+      color: _primaryPurple.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(20),
     ),
     child: Center(

@@ -1,14 +1,14 @@
 
+import 'package:flutter/foundation.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/practical_task_model.dart';
 import '../models/user_model.dart';
 import '../models/course_model.dart';
-import '../models/module_model.dart';
 import '../models/test_model.dart';
 import '../models/certificate_model.dart';
-import 'dart:typed_data';
+
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
@@ -29,7 +29,7 @@ class SupabaseService {
     await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
     _client = Supabase.instance.client;
     _initialized = true;
-    print('Supabase initialized');
+    debugPrint('Supabase initialized');
   }
 
 Future<bool> isUserEnrolled(int userId, int courseId) async {
@@ -43,7 +43,7 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
 
       return response != null;
     } catch (e) {
-      print('Error checking enrollment: $e');
+      debugPrint('Error checking enrollment: $e');
       return false;
     }
   }
@@ -61,7 +61,7 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
           .maybeSingle();
 
       if (existingUser != null) {
-        print('Email already registered: $email');
+        debugPrint('Email already registered: $email');
         throw Exception('Email уже зарегистрирован');
       }
 
@@ -79,17 +79,17 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
           .select()
           .single();
 
-      print('Registration successful for: $email');
+      debugPrint('Registration successful for: $email');
       return UserModel.fromJson(response);
     } catch (e) {
-      print('Registration error for $email: $e');
+      debugPrint('Registration error for $email: $e');
       return null;
     }
   }
 
   Future<UserModel?> login(String email, String password) async {
     try {
-      print('Attempting login for: $email');
+      debugPrint('Attempting login for: $email');
 
       final response = await _client
           .from('users')
@@ -99,12 +99,12 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
           .maybeSingle();
 
       if (response == null) {
-        print('User not found: $email');
+        debugPrint('User not found: $email');
         return null;
       }
 
       if (response['password'] != password) {
-        print('Incorrect password for: $email');
+        debugPrint('Incorrect password for: $email');
         return null;
       }
 
@@ -115,10 +115,10 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
           })
           .eq('id', response['id']);
 
-      print('Login successful for: $email');
+      debugPrint('Login successful for: $email');
       return UserModel.fromJson(response);
     } catch (e) {
-      print('Login error for $email: $e');
+      debugPrint('Login error for $email: $e');
       return null;
     }
   }
@@ -132,13 +132,13 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
           .maybeSingle();
 
       if (response == null) {
-        print('User not found by id: $userId');
+        debugPrint('User not found by id: $userId');
         return null;
       }
 
       return UserModel.fromJson(response);
     } catch (e) {
-      print('Error fetching user by id $userId: $e');
+      debugPrint('Error fetching user by id $userId: $e');
       return null;
     }
   }
@@ -150,10 +150,10 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
           .select()
           .order('date_registration', ascending: false);
 
-      print('Total users in database: ${response.length}');
+      debugPrint('Total users in database: ${response.length}');
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('Error getting users: $e');
+      debugPrint('Error getting users: $e');
       return [];
     }
   }
@@ -179,7 +179,7 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
     final List<dynamic> data = response as List<dynamic>;
     return data.map((json) => CourseModel.fromJson(json)).toList();
   } catch (e) {
-    print('Error fetching courses: $e');
+    debugPrint('Error fetching courses: $e');
     return [];
   }
 }
@@ -203,37 +203,37 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
             'id,id_employee,name,description,date_create,price,complexity,status',
           )
           .filter('id', 'in', '(${ids.join(',')})')
-          .eq('status', 'Активный');;
+          .eq('status', 'Активный');
       final list = List<Map<String, dynamic>>.from(coursesResp as List);
       return list.map((j) => CourseModel.fromJson(j)).toList();
     } catch (e, st) {
-      print('[SupabaseService] error getting user courses: $e');
-      print(st);
+      debugPrint('[SupabaseService] error getting user courses: $e');
+      debugPrint(st.toString());
       return [];
     }
   }
 
   Future<List<Map<String, dynamic>>> getModulesWithSubmodules(int courseId) async {
     try {
-      print('Querying modules for course $courseId');
+      debugPrint('Querying modules for course $courseId');
       // Запрашиваем модули и сразу все связанные подмодули
       final response = await _client
           .from('module')
           .select('''
             *,
             submodule (*)
-          ''')
+          ''''')
           .eq('id_courses', courseId)
           .order('order_module', ascending: true);
 
-      print('Modules query result: ${response.length} items');
+      debugPrint('Modules query result: ${response.length} items');
       for (var module in response) {
-        print('Module: ${module['name']}, submodules: ${(module['submodule'] as List?)?.length ?? 0}');
+        debugPrint('Module: ${module['name']}, submodules: ${(module['submodule'] as List?)?.length ?? 0}');
       }
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('Error fetching modules and submodules: $e');
+      debugPrint('Error fetching modules and submodules: $e');
       return [];
     }
   }
@@ -256,7 +256,7 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
       }
       return tests;
     } catch (e) {
-      print('Join test query failed: $e');
+      debugPrint('Join test query failed: $e');
       return [];
     }
   }
@@ -275,7 +275,7 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
           .maybeSingle();
       return existing != null;
     } catch (e) {
-      print('[SupabaseService] error checking purchase: $e');
+      debugPrint('[SupabaseService] error checking purchase: $e');
       return false;
     }
   }
@@ -296,7 +296,7 @@ Future<bool> purchaseCourse(int userId, CourseModel course, String userEmail) as
     );
     return true;
   } catch (e) {
-    print('Ошибка при записи в БД: $e');
+    debugPrint('Ошибка при записи в БД: $e');
     return false;
   }
 }
@@ -317,7 +317,7 @@ Future<List<AchievementModel>> getUserAchievements(int userId) async {
         .map((item) => AchievementModel.fromJson(item['achievement']))
         .toList();
   } catch (e) {
-    print('Error fetching user achievements: $e');
+    debugPrint('Error fetching user achievements: $e');
     return [];
   }
 }
@@ -332,42 +332,53 @@ Future<bool> updateUserName(int userId, String newName) async {
         .eq('id', userId);
     return true;
   } catch (e) {
-    print('Error updating user name: $e');
+    debugPrint('Error updating user name: $e');
     return false;
   }
 }
 
 /// Загрузить аватар в Storage
-Future<String?> uploadAvatar(int userId, Uint8List imageBytes, String extension) async {
-  try {
-    final fileName = 'avatar_${userId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
-    
-    await _client.storage
-        .from('avatars')
-        .uploadBinary(fileName, imageBytes,
-            fileOptions: const FileOptions(contentType: 'image/png', upsert: true));
+  Future<String?> uploadAvatar(int userId, Uint8List imageBytes, String extension) async {
+    try {
+      final fileName = 'avatar_${userId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      
+      // Определяем корректный Content-Type
+      final String contentType = (extension.toLowerCase() == 'png') ? 'image/png' : 'image/jpeg';
+      
+      await _client.storage
+          .from('avatars')
+          .uploadBinary(fileName, imageBytes,
+              fileOptions: FileOptions(contentType: contentType, upsert: true));
 
-    final url = _client.storage.from('avatars').getPublicUrl(fileName);
-    return url;
-  } catch (e) {
-    print('Error uploading avatar: $e');
-    return null;
+      final url = _client.storage.from('avatars').getPublicUrl(fileName);
+      debugPrint('File uploaded to storage: $url');
+      return url;
+    } catch (e) {
+      debugPrint('Error uploading avatar to storage: $e');
+      rethrow;
+    }
   }
-}
 
 /// Сохранить URL аватара в профиле
-Future<bool> updateUserAvatar(int userId, String avatarUrl) async {
-  try {
-    await _client
-        .from('users')
-        .update({'avatar': avatarUrl})
-        .eq('id', userId);
-    return true;
-  } catch (e) {
-    print('Error updating avatar: $e');
-    return false;
+  Future<bool> updateUserAvatar(int userId, String avatarUrl) async {
+    try {
+      final response = await _client
+          .from('users')
+          .update({'avatar': avatarUrl})
+          .eq('id', userId)
+          .select();
+          
+      if (response.isNotEmpty) {
+        debugPrint('Avatar URL saved to DB successfully');
+        return true;
+      }
+      debugPrint('Update failed: No data returned from DB');
+      return false;
+    } catch (e) {
+      debugPrint('Error updating avatar in DB: $e');
+      return false;
+    }
   }
-}
 
 Future<List<CertificateModel>> getUserCertificates(int userId) async {
   try {
@@ -380,7 +391,7 @@ Future<List<CertificateModel>> getUserCertificates(int userId) async {
 
     return data.map((item) => CertificateModel.fromJson(item)).toList();
   } catch (e) {
-    print('Error fetching user certificates: $e');
+    debugPrint('Error fetching user certificates: $e');
     return [];
   }
 }
@@ -489,7 +500,7 @@ Future<bool> sendEmailReceipt({
         ..subject = '🧾 Чек по заказу: $courseName'
         ..html = htmlContent;
 
-      print('[Email] Отправка стилизованного письма на: $toEmail');
+      debugPrint('[Email] Отправка стилизованного письма на: $toEmail');
       
       // Используем await для реальной отправки
       await send(message, smtpServer).timeout(
@@ -497,10 +508,10 @@ Future<bool> sendEmailReceipt({
         onTimeout: () => throw Exception('Timeout при отправке почты'),
       );
       
-      print('[Email] ✅ Письмо успешно доставлено');
+      debugPrint('[Email] ✅ Письмо успешно доставлено');
       return true;
     } catch (e) {
-      print('[Email] ❌ Ошибка: $e');
+      debugPrint('[Email] ❌ Ошибка: $e');
       return false;
     }
   }
@@ -524,7 +535,7 @@ Future<bool> sendEmailReceipt({
           'is_completed': true,
           'completed_at': DateTime.now().toIso8601String(),
         });
-        print('Submodule progress saved: user $userId, submodule $submoduleId');
+        debugPrint('Submodule progress saved: user $userId, submodule $submoduleId');
       } else {
         // Обновляем существующую
         await _client
@@ -535,11 +546,11 @@ Future<bool> sendEmailReceipt({
             })
             .eq('id_user', userId)
             .eq('id_submodule', submoduleId);
-        print('Submodule progress updated: user $userId, submodule $submoduleId');
+        debugPrint('Submodule progress updated: user $userId, submodule $submoduleId');
       }
     } catch (e) {
-      print('Error saving submodule progress: $e');
-      throw e;
+      debugPrint('Error saving submodule progress: $e');
+      return null;
     }
   }
 
@@ -554,10 +565,10 @@ Future<bool> sendEmailReceipt({
         'is_correct': isCorrect,
         'date_completed': DateTime.now().toIso8601String(),
       });
-      print('Test result saved: user $userId, submodule $submoduleId, correct $numberCorrectAnswers/$numberTests');
+      debugPrint('Test result saved: user $userId, submodule $submoduleId, correct $numberCorrectAnswers/$numberTests');
     } catch (e) {
-      print('Error saving test result: $e');
-      throw e;
+      debugPrint('Error saving test result: $e');
+      return null;
     }
   }
 
@@ -574,10 +585,10 @@ Future<bool> sendEmailReceipt({
           .map((row) => row['id_submodule'] as int)
           .toSet();
 
-      print('Completed submodules for user $userId: $completedIds');
+      debugPrint('Completed submodules for user $userId: $completedIds');
       return completedIds;
     } catch (e) {
-      print('Error fetching completed submodules: $e');
+      debugPrint('Error fetching completed submodules: $e');
       return {};
     }
   }
@@ -594,10 +605,10 @@ Future<bool> sendEmailReceipt({
           .map((row) => row['id_submodule'] as int)
           .toSet();
 
-      print('Completed test submodules for user $userId: $completedIds');
+      debugPrint('Completed test submodules for user $userId: $completedIds');
       return completedIds;
     } catch (e) {
-      print('Error fetching completed test submodules: $e');
+      debugPrint('Error fetching completed test submodules: $e');
       return {};
     }
   }
@@ -618,7 +629,7 @@ Future<List<PracticalTaskModel>> getPracticalTasks(int submoduleId) async {
         .map((json) => PracticalTaskModel.fromJson(json))
         .toList();
   } catch (e) {
-    print('Error getting practical tasks: $e');
+    debugPrint('Error getting practical tasks: $e');
     return [];
   }
 }
@@ -665,8 +676,8 @@ Future<void> savePracticalTaskResult(
           });
     }
   } catch (e) {
-    print('Error saving practical task result: $e');
-    throw e;
+    debugPrint('Error saving practical task result: $e');
+    return null;
   }
 }
 
@@ -683,7 +694,7 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
         .map((row) => row['id_task'] as int)
         .toSet();
   } catch (e) {
-    print('Error getting completed practical tasks: $e');
+    debugPrint('Error getting completed practical tasks: $e');
     return {};
   }
 }
@@ -691,5 +702,3 @@ SupabaseClient get client {
   return _client;
 }
 }
-
-

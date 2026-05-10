@@ -23,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
     final userId = authProvider.currentUser?.id ?? 0;
 
     // Все экраны (5 вкладок)
-    final List<Widget> _screens = [
+    final List<Widget> screens = [
       const CoursesScreen(),                          // 0 - Каталог
       UserChatsListScreen(userId: userId),            // 2 - Чаты
       const AiChatScreen(),                           // 3 - Чат ИИ
@@ -33,7 +33,7 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: CustomBottomNav(
         currentIndex: _selectedIndex,

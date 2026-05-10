@@ -131,7 +131,7 @@ class _CertificatePdfViewerScreenState extends State<CertificatePdfViewerScreen>
         autoSpacing: false,
         pageSnap: false,
         fitPolicy: FitPolicy.BOTH,
-        onError: (error) => print(error.toString()),
+        onError: (error) => debugPrint(error.toString()),
       ),
     );
   }

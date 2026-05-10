@@ -115,9 +115,9 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
   Future<void> _loadModules() async {
     if (mounted) setState(() => _loading = true);
     try {
-      print('Loading modules for course ${widget.course.id}');
+      debugPrint('Loading modules for course ${widget.course.id}');
       final data = await SupabaseService().getModulesWithSubmodules(widget.course.id);
-      print('Loaded ${data.length} modules');
+      debugPrint('Loaded ${data.length} modules');
       if (mounted) {
         setState(() {
           _courseStructure = data;
@@ -128,7 +128,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
       final Map<int, List<TestModel>> testsMap = {};
       for (final module in _courseStructure) {
         final submodules = module['submodule'] as List<dynamic>? ?? [];
-        print('Module ${module['name']} has ${submodules.length} submodules');
+        debugPrint('Module ${module['name']} has ${submodules.length} submodules');
         for (final sub in submodules) {
           if (sub is Map<String, dynamic>) {
             final submoduleId = sub['id'] as int?;
@@ -137,10 +137,10 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                 final tests = await SupabaseService().getTestsBySubmodule(submoduleId);
                 if (tests.isNotEmpty) {
                   testsMap[submoduleId] = tests;
-                  print('Loaded ${tests.length} tests for submodule $submoduleId');
+                  debugPrint('Loaded ${tests.length} tests for submodule $submoduleId');
                 }
               } catch (e) {
-                print('Error loading tests for submodule $submoduleId: $e');
+                debugPrint('Error loading tests for submodule $submoduleId: $e');
                 // Игнорируем ошибки загрузки тестов для отдельных подмодулей
               }
             }
@@ -162,7 +162,7 @@ for (final module in _courseStructure) {
             practicalTasksMap[submoduleId] = tasks;
           }
         } catch (e) {
-          print('Error loading practical tasks for submodule $submoduleId: $e');
+          debugPrint('Error loading practical tasks for submodule $submoduleId: $e');
         }
       }
     }
@@ -170,6 +170,7 @@ for (final module in _courseStructure) {
 }
 
       // Загружаем прогресс пользователя
+      if (!mounted) return;
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.currentUser != null) {
         final completedSubmodules = await SupabaseService().getCompletedSubmodules(authProvider.currentUser!.id!);
@@ -194,6 +195,7 @@ for (final module in _courseStructure) {
       }
 
       // Проверяем наличие сертификата и генерируем если нужно
+      if (!mounted) return;
       final authProvider2 = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider2.currentUser != null) {
         final hasCertificate = await CertificateService().hasCertificate(authProvider2.currentUser!.id!, widget.course.id);
@@ -203,9 +205,9 @@ for (final module in _courseStructure) {
         await _checkAndGenerateCertificate(authProvider2.currentUser!);
       }
 
-      print('Modules loading completed');
+      debugPrint('Modules loading completed');
     } catch (e) {
-      print('Error in _loadModules: $e');
+      debugPrint('Error in _loadModules: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -416,12 +418,12 @@ for (final module in _courseStructure) {
   }
 
   Widget _buildModulesList() {
-  print('_buildModulesList called, loading: $_loading, courseStructure length: ${_courseStructure.length}');
+  debugPrint('_buildModulesList called, loading: $_loading, courseStructure length: ${_courseStructure.length}');
   if (_loading) return const Center(child: CircularProgressIndicator());
   if (_courseStructure.isEmpty) return const Text("Материалы курса скоро появятся");
 
   final allSubmodules = _flattenSubmodules();
-  print('All submodules count: ${allSubmodules.length}');
+  debugPrint('All submodules count: ${allSubmodules.length}');
 
   return ListView.builder(
     shrinkWrap: true,
@@ -430,7 +432,7 @@ for (final module in _courseStructure) {
     itemBuilder: (context, index) {
       final module = _courseStructure[index];
       final List submodules = module['submodule'] ?? [];
-      print('Building module ${module['name']} with ${submodules.length} submodules');
+      debugPrint('Building module ${module['name']} with ${submodules.length} submodules');
 
       return Container(
         margin: const EdgeInsets.only(bottom: 12),

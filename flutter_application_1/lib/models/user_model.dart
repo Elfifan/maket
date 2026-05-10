@@ -1,5 +1,5 @@
-import 'dart:typed_data';
-import 'dart:convert';
+
+
 
 
 class UserModel {
@@ -8,7 +8,7 @@ class UserModel {
   final String? email;
   final String? password;
   final DateTime? dateRegistration;
-  final Uint8List? avatar;
+  final String? avatarUrl;
   final bool? status;
   final DateTime? lastEntry;
 
@@ -18,7 +18,7 @@ class UserModel {
     this.email,
     this.password,
     this.dateRegistration,
-    this.avatar,
+    this.avatarUrl,
     this.status,
     this.lastEntry,
   });
@@ -32,7 +32,7 @@ class UserModel {
       dateRegistration: json['date_registration'] != null 
           ? DateTime.parse(json['date_registration']) 
           : null,
-      avatar: null, // Теперь аватар всегда null
+      avatarUrl: json['avatar'], // Теперь читаем URL из базы
       status: json['status'],
       lastEntry: json['last_entry'] != null 
           ? DateTime.parse(json['last_entry']) 
@@ -48,7 +48,7 @@ class UserModel {
       if (password != null) 'password': password,
       if (dateRegistration != null) 
         'date_registration': dateRegistration!.toIso8601String().split('T')[0],
-      // avatar больше не отправляем
+      if (avatarUrl != null) 'avatar': avatarUrl,
       if (status != null) 'status': status,
       if (lastEntry != null) 
         'last_entry': lastEntry!.toIso8601String().split('T')[0],
