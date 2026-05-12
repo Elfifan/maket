@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:http/http.dart' as http;
@@ -14,6 +15,7 @@ import '../services/supabase_service.dart';
 import '../services/certificate_service.dart';
 import 'tests_screen.dart';
 import '../models/practical_task_model.dart';
+import '../widgets/glass_container.dart';
 
 class SubmoduleContentScreen extends StatefulWidget {
   final String title;
@@ -365,93 +367,346 @@ void initState() {
         elevation: 0,
         centerTitle: true,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFFA58EFF)))
-          : _error != null
-              ? Center(child: Text(_error!))
-              : Column(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _isVideo ? _buildVideoUI() : _buildMarkdownUI(),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (_hasNextSubmodule)
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFA58EFF),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: _goToNextSubmodule,
-                            child: Text(
-                              'Следующий: ${_nextSubmodule?['name'] ?? 'урок'}',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (_isLastSubmodule)
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: _completeCourse,
-                            child: const Text(
-                              'Завершить курс',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+      body: Stack(
+        children: [
+          // Фоновые декорации для темной темы
+          if (context.isDark) ...[
+            Positioned(
+              top: -100,
+              right: -50,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFA58EFF).withValues(alpha: 0.15),
                 ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 70, sigmaY: 70),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 100,
+              left: -100,
+              child: Container(
+                width: 400,
+                height: 400,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFF2C9D4).withValues(alpha: 0.1),
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+                  child: Container(color: Colors.transparent),
+                ),
+              ),
+            ),
+          ],
+          
+          _isLoading
+              ? const Center(child: CircularProgressIndicator(color: Color(0xFFA58EFF)))
+              : _error != null
+                  ? Center(child: Text(_error!))
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.only(bottom: 30),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _isVideo ? _buildVideoUI() : _buildMarkdownUI(),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _buildBottomNavigation(),
+                      ],
+                    ),
+        ],
+      ),
     );
   }
 
-  // Виджет для отображения видео
   Widget _buildVideoUI() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_chewieController != null && _chewieController!.videoPlayerController.value.isInitialized)
-          AspectRatio(
-            aspectRatio: _videoPlayerController!.value.aspectRatio,
-            child: Chewie(controller: _chewieController!),
-          )
-        else
-          const AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Center(child: CircularProgressIndicator()),
+        // Стилизованный плеер
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFA58EFF).withValues(alpha: 0.2),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-        const Padding(
-          padding: EdgeInsets.all(20.0),
-          child: Text(
-            "Просмотр видеоурока",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: AspectRatio(
+              aspectRatio: _videoPlayerController?.value.isInitialized == true
+                  ? _videoPlayerController!.value.aspectRatio
+                  : 16 / 9,
+              child: _chewieController != null && _videoPlayerController?.value.isInitialized == true
+                  ? Chewie(controller: _chewieController!)
+                  : Container(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      child: const Center(child: CircularProgressIndicator(color: Color(0xFFA58EFF))),
+                    ),
+            ),
           ),
         ),
+
+        // Информационная карточка урока
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: GlassContainer(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFA58EFF).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.play_circle_filled_rounded, color: Color(0xFFA58EFF), size: 24),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.title,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: context.textPrimary,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Видеоурок • ${widget.courseName}",
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: context.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Divider(color: context.borderColor, height: 1),
+                const SizedBox(height: 20),
+                Text(
+                  "В этом уроке мы разберем ключевые концепции темы и закрепим их на практических примерах. Обязательно досмотрите до конца, чтобы успешно пройти итоговый тест.",
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.6,
+                    color: context.textPrimary.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 32),
+
+        // Блок ключевых моментов
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 16),
+                child: Text(
+                  "Ключевые тезисы",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: context.textPrimary,
+                  ),
+                ),
+              ),
+              _buildTopicItem(Icons.check_circle_outline_rounded, "Теоретические основы и определения"),
+              _buildTopicItem(Icons.check_circle_outline_rounded, "Практическое применение инструментов"),
+              _buildTopicItem(Icons.check_circle_outline_rounded, "Разбор типичных ошибок"),
+              _buildTopicItem(Icons.check_circle_outline_rounded, "Советы по оптимизации рабочего процесса"),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 32),
+
+        // Превью следующего урока
+        if (_hasNextSubmodule) _buildNextLessonPreview(),
       ],
     );
+  }
+
+  Widget _buildTopicItem(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFFA58EFF), size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 15,
+                color: context.textPrimary.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNextLessonPreview() {
+    final next = _nextSubmodule;
+    if (next == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 16),
+            child: Text(
+              "Следующий урок",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: context.textPrimary,
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: _goToNextSubmodule,
+            borderRadius: BorderRadius.circular(20),
+            child: GlassContainer(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFA58EFF).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.arrow_forward_rounded, color: Color(0xFFA58EFF)),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          next['name'] ?? 'Урок',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Перейти к следующему этапу обучения",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigation() {
+    if (_hasNextSubmodule) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFA58EFF),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            onPressed: _goToNextSubmodule,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Перейти к следующему уроку',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_isLastSubmodule) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            onPressed: _completeCourse,
+            child: const Text(
+              'Завершить курс и получить сертификат',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
   // Виджет для отображения текста (ваш текущий Markdown)
