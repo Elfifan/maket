@@ -56,10 +56,7 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_rounded, color: context.textSecondary, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: Text(
           'Мои чаты',
           style: GoogleFonts.roboto(
@@ -94,7 +91,7 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
                       Text(
                         'У вас пока нет чатов',
                         style: GoogleFonts.roboto(
-                          color: _textDark,
+                          color: context.textPrimary,
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
@@ -198,7 +195,7 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
                                           style: GoogleFonts.roboto(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 16,
-                                            color: _textDark,
+                                            color: context.textPrimary,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
@@ -223,20 +220,6 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
                                           ],
                                         ),
                                       ],
-                                    ),
-                                  ),
-                                  // Кнопка перехода
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: _bgLight,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Icon(
-                                      Icons.arrow_forward_ios_rounded,
-                                      color: _primaryPurple,
-                                      size: 16,
                                     ),
                                   ),
                                 ],

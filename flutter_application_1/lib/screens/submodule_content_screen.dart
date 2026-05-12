@@ -423,7 +423,6 @@ void initState() {
                             ),
                           ),
                         ),
-                        _buildBottomNavigation(),
                       ],
                     ),
         ],

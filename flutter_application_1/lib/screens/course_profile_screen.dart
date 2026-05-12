@@ -472,7 +472,7 @@ for (final module in _courseStructure) {
                 title: Text(
                   sub['name'] ?? 'Без названия',
                   style: TextStyle(
-                    color: _isEnrolled ? _textDark : _textGrey, 
+                    color: _isEnrolled ? context.textPrimary : _textGrey, 
                   ),
                 ),
                 trailing: Icon(
@@ -541,7 +541,7 @@ for (final module in _courseStructure) {
                   title: Text(
                     'Тесты (${tests.length})',
                     style: TextStyle(
-                      color: _isEnrolled ? _textDark : _textGrey, 
+                      color: _isEnrolled ? context.textPrimary : _textGrey, 
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -594,7 +594,7 @@ if (practicalTasks != null && practicalTasks.isNotEmpty) {
     title: Text(
       'Практика (${practicalTasks.length})',
       style: TextStyle(
-        color: _isEnrolled ? _textDark : _textGrey,
+        color: _isEnrolled ? context.textPrimary : _textGrey,
         fontWeight: FontWeight.w500,
       ),
     ),
