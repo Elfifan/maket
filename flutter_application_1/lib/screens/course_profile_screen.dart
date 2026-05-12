@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/course_model.dart';
@@ -14,6 +15,7 @@ import 'submodule_content_screen.dart';
 import 'tests_screen.dart';
 import 'user_chat_screen.dart';
 import 'practical_task_screen.dart';
+import '../widgets/glass_container.dart';
 
 class CourseProfileScreen extends StatefulWidget {
   final CourseModel course;
@@ -740,16 +742,55 @@ Widget _buttonTemplate({
   required VoidCallback? onPressed, 
   bool isAccent = true
 }) {
+  if (!isAccent) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: GestureDetector(
+          onTap: onPressed,
+          child: Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  _primaryPurple.withValues(alpha: 0.18),
+                  const Color(0xFFF2C9D4).withValues(alpha: 0.12),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: const Center(
+              child: Text(
+                'Продолжить обучение',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      color: Color(0x80000000),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   return Container(
     width: double.infinity,
     height: 56,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(16),
-      // Если курс куплен, можно сделать градиент чуть спокойнее (например, только фиолетовый)
       gradient: LinearGradient(
-        colors: isAccent 
-            ? [_primaryPurple, const Color(0xFFF2C9D4)] 
-            : [_primaryPurple, _primaryPurple.withValues(alpha: 0.8)],
+        colors: [_primaryPurple, const Color(0xFFF2C9D4)],
       ),
       boxShadow: [
         BoxShadow(

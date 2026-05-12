@@ -165,7 +165,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
             Text(
               widget.courseName,
               style: GoogleFonts.roboto(
-                color: _textDark,
+                color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -179,32 +179,6 @@ class _UserChatScreenState extends State<UserChatScreen> {
             ),
           ],
         ),
-        actions: [
-          // Индикатор онлайн статуса
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF10B981),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Онлайн',
-                  style: GoogleFonts.roboto(
-                    color: _textGrey,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [
