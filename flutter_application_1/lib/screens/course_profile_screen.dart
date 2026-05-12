@@ -377,9 +377,15 @@ for (final module in _courseStructure) {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: _selectedTabIndex == 0 ? _primaryPurple : context.cardBg,
+                color: _selectedTabIndex == 0 
+                    ? (context.isDark ? _primaryPurple.withValues(alpha: 0.25) : _primaryPurple)
+                    : context.cardBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _selectedTabIndex == 0 ? _primaryPurple : context.borderColor),
+                border: Border.all(
+                  color: _selectedTabIndex == 0 
+                      ? (context.isDark ? Colors.white.withValues(alpha: 0.1) : _primaryPurple)
+                      : context.borderColor,
+                ),
               ),
               child: Center(
                 child: Text(
@@ -400,9 +406,15 @@ for (final module in _courseStructure) {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: _selectedTabIndex == 1 ? _primaryPurple : context.cardBg,
+                color: _selectedTabIndex == 1 
+                    ? (context.isDark ? _primaryPurple.withValues(alpha: 0.25) : _primaryPurple)
+                    : context.cardBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _selectedTabIndex == 1 ? _primaryPurple : context.borderColor),
+                border: Border.all(
+                  color: _selectedTabIndex == 1 
+                      ? (context.isDark ? Colors.white.withValues(alpha: 0.1) : _primaryPurple)
+                      : context.borderColor,
+                ),
               ),
               child: Center(
                 child: Text(
@@ -685,15 +697,41 @@ Widget _buildActionButton() {
 Widget _buildContactAuthorButton() {
   return SizedBox(
     width: double.infinity,
-    child: OutlinedButton.icon(
-      onPressed: _contactAuthor,
-      icon: const Icon(Icons.person_search_rounded, color: Color(0xFFA58EFF)),
-      label: const Text('Связаться с автором', style: TextStyle(color: Color(0xFFA58EFF), fontWeight: FontWeight.w600)),
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Color(0xFFA58EFF)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-      backgroundColor: context.isDark ? ThemeProvider.darkSurface : Colors.white,
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: context.isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : const Color(0xFFA58EFF),
+        ),
+        color: context.isDark
+            ? _primaryPurple.withValues(alpha: 0.12)
+            : Colors.white,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _contactAuthor,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.person_search_rounded, color: context.isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFFA58EFF)),
+                const SizedBox(width: 8),
+                Text(
+                  'Связаться с автором',
+                  style: TextStyle(
+                    color: context.isDark ? Colors.white.withValues(alpha: 0.8) : const Color(0xFFA58EFF),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     ),
   );
@@ -790,9 +828,14 @@ Widget _buttonTemplate({
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(16),
       gradient: LinearGradient(
-        colors: [_primaryPurple, const Color(0xFFF2C9D4)],
+        colors: context.isDark
+            ? [_primaryPurple.withValues(alpha: 0.25), const Color(0xFFF2C9D4).withValues(alpha: 0.15)]
+            : [_primaryPurple, const Color(0xFFF2C9D4)],
       ),
-      boxShadow: [
+      border: context.isDark
+          ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+          : null,
+      boxShadow: context.isDark ? null : [
         BoxShadow(
           color: _primaryPurple.withValues(alpha: 0.3), 
           blurRadius: 12, 

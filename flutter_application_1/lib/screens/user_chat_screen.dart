@@ -286,8 +286,10 @@ class _UserChatScreenState extends State<UserChatScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 gradient: isMe
-                    ? const LinearGradient(
-                        colors: [_primaryPurple, _accentPink],
+                    ? LinearGradient(
+                        colors: context.isDark
+                            ? [_primaryPurple.withValues(alpha: 0.3), _accentPink.withValues(alpha: 0.2)]
+                            : [_primaryPurple, _accentPink],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       )
@@ -315,7 +317,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                   Text(
                     msg.message,
                     style: TextStyle(
-                      color: isMe ? Colors.white : _textDark,
+                      color: isMe ? Colors.white : context.textPrimary,
                       fontSize: 15,
                       height: 1.4,
                     ),
@@ -415,13 +417,18 @@ class _UserChatScreenState extends State<UserChatScreen> {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [_primaryPurple, _accentPink],
+                  gradient: LinearGradient(
+                    colors: context.isDark
+                        ? [_primaryPurple.withValues(alpha: 0.25), _accentPink.withValues(alpha: 0.15)]
+                        : [_primaryPurple, _accentPink],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
+                  border: context.isDark
+                      ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                      : null,
+                  boxShadow: context.isDark ? null : [
                     BoxShadow(
                       color: _primaryPurple.withValues(alpha: 0.4),
                       blurRadius: 10,

@@ -164,13 +164,18 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
                                     width: 56,
                                     height: 56,
                                     decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [_primaryPurple, _accentPink],
+                                      gradient: LinearGradient(
+                                        colors: context.isDark
+                                            ? [_primaryPurple.withValues(alpha: 0.25), _accentPink.withValues(alpha: 0.15)]
+                                            : [_primaryPurple, _accentPink],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
                                       borderRadius: BorderRadius.circular(18),
-                                      boxShadow: [
+                                      border: context.isDark
+                                          ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                                          : null,
+                                      boxShadow: context.isDark ? null : [
                                         BoxShadow(
                                           color: _primaryPurple.withValues(alpha: 0.3),
                                           blurRadius: 10,

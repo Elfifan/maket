@@ -233,13 +233,18 @@ Widget _buildCodeBlock(String code) {
                 width: 50,
                 height: 50,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFA58EFF), Color(0xFFF2C9D4)],
+                  gradient: LinearGradient(
+                    colors: context.isDark
+                        ? [const Color(0xFFA58EFF).withValues(alpha: 0.25), const Color(0xFFF2C9D4).withValues(alpha: 0.15)]
+                        : [const Color(0xFFA58EFF), const Color(0xFFF2C9D4)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
+                  border: context.isDark
+                      ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                      : null,
+                  boxShadow: context.isDark ? null : [
                     BoxShadow(
                       color: const Color(0xFFA58EFF).withValues(alpha: 0.3),
                       blurRadius: 10,

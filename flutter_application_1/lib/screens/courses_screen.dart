@@ -357,9 +357,13 @@ class _CoursesScreenState extends State<CoursesScreen> {
         margin: const EdgeInsets.only(left: 20),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected ? _primaryPurple : context.surfaceColor,
+          color: isSelected
+              ? (context.isDark ? _primaryPurple.withValues(alpha: 0.25) : _primaryPurple)
+              : context.surfaceColor,
           borderRadius: BorderRadius.circular(16),
-          border: isSelected ? null : Border.all(color: context.borderColor),
+          border: isSelected
+              ? (context.isDark ? Border.all(color: Colors.white.withValues(alpha: 0.1)) : null)
+              : Border.all(color: context.borderColor),
         ),
         child: Row(
           children: [

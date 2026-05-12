@@ -282,8 +282,15 @@ class _LoginScreenState extends State<LoginScreen> {
     height: 55,
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(16),
-      gradient: const LinearGradient(colors: [_primaryPurple, _accentPink]),
-      boxShadow: [BoxShadow(color: _primaryPurple.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+      gradient: LinearGradient(
+        colors: context.isDark
+            ? [_primaryPurple.withValues(alpha: 0.25), _accentPink.withValues(alpha: 0.15)]
+            : [_primaryPurple, _accentPink],
+      ),
+      border: context.isDark
+          ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+          : null,
+      boxShadow: context.isDark ? null : [BoxShadow(color: _primaryPurple.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
     ),
     child: ElevatedButton(
       onPressed: _login,
