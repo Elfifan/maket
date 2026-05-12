@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../models/test_model.dart';
 import '../models/course_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/supabase_service.dart';
 import '../services/certificate_service.dart';
 import 'tests_screen.dart';
@@ -356,11 +357,11 @@ void initState() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.bgColor,
       appBar: AppBar(
         title: Text(widget.title),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1E1E2E),
+        backgroundColor: Colors.transparent,
+        foregroundColor: context.textPrimary,
         elevation: 0,
         centerTitle: true,
       ),
@@ -482,14 +483,14 @@ void initState() {
         );
       },
       styleSheet: MarkdownStyleSheet(
-        h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF1E1E2E)),
-        h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E1E2E)),
-        p: const TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF2E2E3E)),
+        h1: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: context.textPrimary),
+        h2: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: context.textPrimary),
+        p: TextStyle(fontSize: 16, height: 1.5, color: context.textPrimary),
         listBullet: const TextStyle(fontSize: 16, color: Color(0xFFA58EFF)),
         codeblockDecoration: BoxDecoration(
-          color: const Color(0xFFF8F9FB),
+          color: context.isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF8F9FB),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
+          border: Border.all(color: context.borderColor),
         ),
       ),
     );

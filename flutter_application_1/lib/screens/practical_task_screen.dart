@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/practical_task_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/judge0_service.dart';
 import '../services/supabase_service.dart';
 
@@ -151,9 +152,9 @@ Future<void> _runTests() async {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: context.isDark ? ThemeProvider.darkSurface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -234,12 +235,12 @@ Future<void> _runTests() async {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgLight,
+      backgroundColor: context.bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: _textGrey, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, color: context.textSecondary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -269,7 +270,7 @@ Future<void> _runTests() async {
                       width: double.infinity,
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
@@ -459,7 +460,7 @@ Future<void> _runTests() async {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -560,9 +561,9 @@ Future<void> _runTests() async {
   Widget _buildActionButtons() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
+      decoration: BoxDecoration(
+        color: context.isDark ? ThemeProvider.darkSurface : Colors.white,
+        border: Border(top: BorderSide(color: context.borderColor)),
       ),
       child: SafeArea(
         child: Row(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../providers/theme_provider.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -32,7 +33,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.bgColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -78,7 +79,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                              Navigator.pushReplacementNamed(context, '/register');
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2196F3),
+                            backgroundColor: const Color(0xFFA58EFF),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -105,7 +106,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             Navigator.pushReplacementNamed(context, '/login');
                           },
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF2196F3)),
+                            side: const BorderSide(color: Color(0xFFA58EFF)),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -115,7 +116,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF2196F3),
+                              color: Color(0xFFA58EFF),
                             ),
                           ),
                         ),
@@ -152,10 +153,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Text(
             item['title']!,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF333333),
+              color: context.textPrimary,
               height: 1.2,
             ),
           ),
@@ -165,9 +166,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Text(
             item['text']!,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: Color(0xFF999999),
+              color: context.textSecondary,
               height: 1.5,
             ),
           ),
@@ -184,8 +185,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       width: _currentPage == index ? 20 : 6, 
       decoration: BoxDecoration(
         color: _currentPage == index
-            ? const Color(0xFF2196F3)
-            : const Color(0xFFD8D8D8),
+            ? const Color(0xFFA58EFF)
+            : context.isDark ? Colors.white24 : const Color(0xFFD8D8D8),
         borderRadius: BorderRadius.circular(3),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/practical_task_model.dart';
 import '../models/test_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/supabase_service.dart';
 import 'submodule_content_screen.dart';
 
@@ -147,11 +148,12 @@ class _TestsScreenState extends State<TestsScreen> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Тесты'),
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF1E1E2E),
+          backgroundColor: Colors.transparent,
+          foregroundColor: context.textPrimary,
           elevation: 0,
           centerTitle: true,
         ),
+        backgroundColor: context.bgColor,
         body: const Center(
           child: Text('Тесты не найдены'),
         ),
@@ -165,11 +167,12 @@ class _TestsScreenState extends State<TestsScreen> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Тесты'),
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF1E1E2E),
+          backgroundColor: Colors.transparent,
+          foregroundColor: context.textPrimary,
           elevation: 0,
           centerTitle: true,
         ),
+        backgroundColor: context.bgColor,
         body: const Center(
           child: Text('Вопрос не имеет вариантов ответа'),
         ),
@@ -179,12 +182,12 @@ class _TestsScreenState extends State<TestsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${widget.submoduleName} - Тест ${_currentTestIndex + 1}/${widget.tests.length}'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1E1E2E),
+        backgroundColor: Colors.transparent,
+        foregroundColor: context.textPrimary,
         elevation: 0,
         centerTitle: true,
       ),
-      backgroundColor: Colors.white,
+      backgroundColor: context.bgColor,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
@@ -192,7 +195,7 @@ class _TestsScreenState extends State<TestsScreen> {
           children: [
             Text(
               currentTest.question ?? 'Вопрос отсутствует',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E1E2E)),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.textPrimary),
             ),
             const SizedBox(height: 24),
             ...options.map((option) {

@@ -3,6 +3,7 @@ import 'package:flutter_application_1/services/ai_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart';
+import '../providers/theme_provider.dart';
 
 class AiChatScreen extends StatefulWidget {
   const AiChatScreen({super.key});
@@ -43,24 +44,20 @@ class _AiChatScreenState extends State<AiChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: Text(
           'Чат ИИ',
           style: GoogleFonts.manrope(
-            color: const Color(0xFF1E1E2E),
+            color: context.textPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
         centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: Colors.grey.shade200, height: 1),
-        ),
       ),
       body: Column(
         children: [
@@ -114,12 +111,15 @@ Widget _buildMessageBubble(Map<String, dynamic> msg) {
             padding: const EdgeInsets.all(16),
             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
             decoration: BoxDecoration(
-              color: isUser ? const Color(0xFFDCD0FF) : const Color(0xFFF8F9FB),
+              color: isUser
+                  ? const Color(0xFFA58EFF).withValues(alpha: context.isDark ? 0.3 : 0.2)
+                  : context.isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF8F9FB),
               borderRadius: BorderRadius.circular(20),
+              border: context.isDark ? Border.all(color: Colors.white.withValues(alpha: 0.08)) : null,
             ),
             child: Text(
               part,
-              style: GoogleFonts.manrope(fontSize: 14, color: const Color(0xFF1E1E2E)),
+              style: GoogleFonts.manrope(fontSize: 14, color: context.textPrimary),
             ),
           );
         }
@@ -159,8 +159,11 @@ Widget _buildCodeBlock(String code) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFFEBE7FF),
+        color: context.isDark
+            ? const Color(0xFFA58EFF).withValues(alpha: 0.1)
+            : const Color(0xFFEBE7FF),
         borderRadius: BorderRadius.circular(32),
+        border: context.isDark ? Border.all(color: Colors.white.withValues(alpha: 0.08)) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,9 +194,9 @@ Widget _buildCodeBlock(String code) {
   Widget _buildInputPanel() {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 5, 20, 5),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFF1F1F1))),
+      decoration: BoxDecoration(
+        color: context.isDark ? ThemeProvider.darkSurface : Colors.white,
+        border: Border(top: BorderSide(color: context.borderColor)),
       ),
       child: Row(
         children: [
@@ -202,9 +205,9 @@ Widget _buildCodeBlock(String code) {
               height: 42,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FB),
+                color: context.isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8F9FB),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFE0E0E0)),
+                border: Border.all(color: context.borderColor),
               ),
               child: Row(
                 children: [
@@ -213,7 +216,7 @@ Widget _buildCodeBlock(String code) {
                   Expanded(
                     child: TextField(
                       controller: _controller,
-                      style: GoogleFonts.manrope(fontSize: 13),
+                      style: GoogleFonts.manrope(fontSize: 13, color: context.textPrimary),
                       onSubmitted: (_) => _handleSend(),
                       decoration: InputDecoration(
                         hintText: 'Спроси о коде...',

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/course_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/supabase_service.dart';
+import '../widgets/glass_container.dart';
 import 'course_profile_screen.dart';
 
 class CoursesScreen extends StatefulWidget {
@@ -19,10 +21,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   bool _loading = false;
   String _activeFilter = 'Все';
 
-  static const Color _textDark = Color(0xFF1E1E2E);
-  static const Color _textGrey = Color(0xFF9094A6);
   static const Color _primaryPurple = Color(0xFFA58EFF);
-  static const Color _bgLightGrey = Color(0xFFF8F9FB);
 
   final List<Map<String, dynamic>> _categories = [
     {'label': 'Все', 'icon': Icons.grid_view_rounded},
@@ -42,10 +41,8 @@ class _CoursesScreenState extends State<CoursesScreen> {
       if (!mounted) return;
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
-      // Загружаем все активные курсы
       final allCourses = await SupabaseService().getCourses();
       
-      // Загружаем курсы пользователя
       List<CourseModel> myCourses = [];
       if (authProvider.currentUser != null) {
         myCourses = await SupabaseService().getUserCourses(
@@ -85,7 +82,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                      'Пользователь';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.bgColor,
       appBar: _buildAppBar(),
       body: _loading 
         ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
@@ -102,10 +99,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
                         children: [
                           Text(
                             'Доброе утро,\n$userName',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 26,
                               fontWeight: FontWeight.bold,
-                              color: _textDark,
+                              color: context.textPrimary,
                               height: 1.2,
                             ),
                           ),
@@ -119,12 +116,12 @@ class _CoursesScreenState extends State<CoursesScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Направления',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: _textDark,
+                              color: context.textPrimary,
                             ),
                           ),
                         ],
@@ -157,23 +154,23 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     children: [
                       Text(
                         _activeFilter == 'Мои курсы' ? 'Мои курсы' : 'Новые курсы',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: _textDark,
+                          color: context.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: _bgLightGrey,
+                          color: context.surfaceColor,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           '${_displayCourses.length}',
-                          style: const TextStyle(
-                            color: _textGrey,
+                          style: TextStyle(
+                            color: context.textSecondary,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -187,14 +184,14 @@ class _CoursesScreenState extends State<CoursesScreen> {
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 sliver: _displayCourses.isEmpty
-                    ? const SliverToBoxAdapter(
+                    ? SliverToBoxAdapter(
                         child: Center(
                           child: Padding(
-                            padding: EdgeInsets.all(40),
+                            padding: const EdgeInsets.all(40),
                             child: Text(
                               'Курсы не найдены',
                               style: TextStyle(
-                                color: _textGrey,
+                                color: context.textSecondary,
                                 fontSize: 16,
                               ),
                             ),
@@ -214,7 +211,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                         ),
                       ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 30)),
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
     );
@@ -223,7 +220,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   PreferredSizeWidget _buildAppBar() {
     final authProvider = Provider.of<AuthProvider>(context);
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       elevation: 0,
       automaticallyImplyLeading: false,
       titleSpacing: 24,
@@ -232,30 +229,28 @@ class _CoursesScreenState extends State<CoursesScreen> {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: _textDark,
+              color: context.isDark ? Colors.white.withValues(alpha: 0.1) : ThemeProvider.lightTextPrimary,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.bolt, color: Colors.white, size: 20),
+            child: Icon(Icons.bolt, color: context.isDark ? _primaryPurple : Colors.white, size: 20),
           ),
           const SizedBox(width: 10),
-          const Text(
+          Text(
             'Кодикс',
             style: TextStyle(
-              color: _textDark,
+              color: context.textPrimary,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
           ),
           const Spacer(),
           GestureDetector(
-            onTap: () {
-              // Можно добавить переход в профиль или просто оставить как декор
-            },
+            onTap: () {},
             child: Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: _bgLightGrey,
+                color: context.surfaceColor,
                 shape: BoxShape.circle,
                 border: Border.all(color: _primaryPurple.withValues(alpha: 0.3), width: 1),
               ),
@@ -264,103 +259,92 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     ? Image.network(
                         authProvider.currentUser!.avatarUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const Icon(Icons.person, size: 20, color: _textGrey),
+                        errorBuilder: (_, _, _) => Icon(Icons.person, size: 20, color: context.textSecondary),
                       )
-                    : const Icon(Icons.person, size: 20, color: _textGrey),
+                    : Icon(Icons.person, size: 20, color: context.textSecondary),
               ),
             ),
           ),
         ],
       ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(color: const Color(0xFFEEEEEE), height: 1),
-      ),
     );
   }
 
   Widget _buildPathBanner() {
-    // Находим первый курс пользователя для отображения в "текущем пути"
     String courseName = 'Начни уже изучать';
     
     if (_myCourses.isNotEmpty) {
       courseName = _myCourses.first.name;
     }
 
-    return Container(
+    return GlassContainer(
       width: double.infinity,
       height: 160,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFBCAFFF), _primaryPurple],
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-             Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ТЕКУЩИЙ ПУТЬ',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
-                  ),
+      padding: const EdgeInsets.all(20),
+      color: _primaryPurple,
+      opacity: context.isDark ? 0.2 : 0.75,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+           Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'ТЕКУЩИЙ ПУТЬ',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
                 ),
-                SizedBox(height: 6),
-                Text(
-                  courseName,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    height: 1.2,
-                  ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                courseName,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  height: 1.2,
                 ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    if (_myCourses.isNotEmpty) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CourseProfileScreen(course: _myCourses.first),
-                        ),
-                      );
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _myCourses.isNotEmpty ? 'Продолжить' : 'Выбрать курс',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+              ),
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  if (_myCourses.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CourseProfileScreen(course: _myCourses.first),
                       ),
+                    );
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _myCourses.isNotEmpty ? 'Продолжить' : 'Выбрать курс',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
+              ),
 
-              ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -373,21 +357,22 @@ class _CoursesScreenState extends State<CoursesScreen> {
         margin: const EdgeInsets.only(left: 20),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected ? _primaryPurple : _bgLightGrey,
+          color: isSelected ? _primaryPurple : context.surfaceColor,
           borderRadius: BorderRadius.circular(16),
+          border: isSelected ? null : Border.all(color: context.borderColor),
         ),
         child: Row(
           children: [
             Icon(
               icon,
               size: 16,
-              color: isSelected ? Colors.white : _textDark,
+              color: isSelected ? Colors.white : context.textPrimary,
             ),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : _textDark,
+                color: isSelected ? Colors.white : context.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -439,26 +424,18 @@ Widget _buildCourseIcon(String? icon) {
         context,
         MaterialPageRoute(builder: (_) => CourseProfileScreen(course: course)),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      child: GlassContainer(
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: _bgLightGrey,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                decoration: BoxDecoration(
+                  color: context.isDark
+                      ? _primaryPurple.withValues(alpha: 0.08)
+                      : context.surfaceColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: Center(
                   child: _buildCourseIcon(course.icon),
@@ -474,10 +451,10 @@ Widget _buildCourseIcon(String? icon) {
                     course.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: _textDark,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -486,9 +463,9 @@ Widget _buildCourseIcon(String? icon) {
                     children: [
                       Text(
                         '${course.complexity ?? 1} уровень',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: _textGrey,
+                          color: context.textSecondary,
                         ),
                       ),
                       Text(

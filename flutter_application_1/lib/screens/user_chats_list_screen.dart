@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../providers/theme_provider.dart';
 import '../services/chat_service.dart';
 import 'user_chat_screen.dart';
 
@@ -51,18 +52,18 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgLight,
+      backgroundColor: context.bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: _textGrey, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, color: context.textSecondary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Мои чаты',
           style: GoogleFonts.roboto(
-            color: _textDark,
+            color: context.textPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 22,
           ),
@@ -125,9 +126,14 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: context.isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
+                          border: context.isDark
+                              ? Border.all(color: Colors.white.withValues(alpha: 0.08))
+                              : null,
+                          boxShadow: context.isDark ? null : [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 20,

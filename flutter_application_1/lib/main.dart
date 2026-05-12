@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/main_screen.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -9,7 +10,7 @@ import 'screens/courses_screen.dart';
 
 import 'dart:ui';
 import 'dart:io';
-import 'package:google_fonts/google_fonts.dart';
+
 
 // 2. Добавляем класс для игнорирования ошибок сертификатов
 class MyHttpOverrides extends HttpOverrides {
@@ -32,26 +33,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
-      child: MaterialApp(
-        scrollBehavior: MyCustomScrollBehavior(),
-        debugShowCheckedModeBanner: false,
-        title: 'Supabase Auth',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-          scaffoldBackgroundColor: Colors.white,
-          textTheme: GoogleFonts.robotoTextTheme(),
-        ),
-        home: const InitialScreen(),
-        routes: {
-          '/login': (context) => const LoginScreen(),
-          '/register': (context) => const RegisterScreen(),
-          '/home': (context) => const MainScreen(),
-          '/onboarding': (context) => const OnboardingScreen(),
-          '/courses': (context) => const CoursesScreen(),
-
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            scrollBehavior: MyCustomScrollBehavior(),
+            debugShowCheckedModeBanner: false,
+            title: 'Кодикс',
+            theme: ThemeProvider.lightTheme,
+            darkTheme: ThemeProvider.darkTheme,
+            themeMode: themeProvider.themeMode,
+            home: const InitialScreen(),
+            routes: {
+              '/login': (context) => const LoginScreen(),
+              '/register': (context) => const RegisterScreen(),
+              '/home': (context) => const MainScreen(),
+              '/onboarding': (context) => const OnboardingScreen(),
+              '/courses': (context) => const CoursesScreen(),
+            },
+          );
         },
       ),
     );

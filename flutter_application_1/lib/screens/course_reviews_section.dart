@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/feedback_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/feedback_service.dart';
 
 class CourseReviewsSection extends StatefulWidget {
@@ -72,7 +73,7 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: context.isDark ? ThemeProvider.darkSurface : Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Text('Оставить отзыв', style: GoogleFonts.roboto(fontSize: 20, fontWeight: FontWeight.bold, color: _textDark)),
           content: SizedBox(
@@ -218,7 +219,7 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: _bgLight,
+                color: context.isDark ? Colors.white.withValues(alpha: 0.05) : _bgLight,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -276,9 +277,9 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _bgLight, width: 1),
+                    border: Border.all(color: context.isDark ? context.borderColor : _bgLight, width: 1),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

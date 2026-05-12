@@ -5,6 +5,7 @@ import '../models/practical_task_model.dart';
 import '../models/test_model.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/certificate_service.dart';
 import '../services/chat_service.dart';
 import '../services/supabase_service.dart';
@@ -215,7 +216,7 @@ for (final module in _courseStructure) {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.bgColor,
       appBar: _buildAppBar(),
       body: Stack(
         children: [
@@ -237,8 +238,8 @@ for (final module in _courseStructure) {
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
                       widget.course.description!,
-                      style: const TextStyle(
-                        color: _textDark,
+                      style: TextStyle(
+                        color: context.textPrimary,
                         fontSize: 16,
                         height: 1.5,
                       ),
@@ -274,15 +275,15 @@ for (final module in _courseStructure) {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _textDark, size: 20),
+        icon: Icon(Icons.arrow_back_ios_new_rounded, color: context.textPrimary, size: 20),
         onPressed: () => Navigator.pop(context),
       ),
-      title: const Text(
+      title: Text(
         'Детали курса',
-        style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.bold),
+        style: TextStyle(color: context.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -374,16 +375,16 @@ for (final module in _courseStructure) {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: _selectedTabIndex == 0 ? _primaryPurple : Colors.white,
+                color: _selectedTabIndex == 0 ? _primaryPurple : context.cardBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _selectedTabIndex == 0 ? _primaryPurple : Colors.grey.shade300),
+                border: Border.all(color: _selectedTabIndex == 0 ? _primaryPurple : context.borderColor),
               ),
               child: Center(
                 child: Text(
                   'Модули',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: _selectedTabIndex == 0 ? Colors.white : _textDark,
+                    color: _selectedTabIndex == 0 ? Colors.white : context.textPrimary,
                   ),
                 ),
               ),
@@ -397,16 +398,16 @@ for (final module in _courseStructure) {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: _selectedTabIndex == 1 ? _primaryPurple : Colors.white,
+                color: _selectedTabIndex == 1 ? _primaryPurple : context.cardBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _selectedTabIndex == 1 ? _primaryPurple : Colors.grey.shade300),
+                border: Border.all(color: _selectedTabIndex == 1 ? _primaryPurple : context.borderColor),
               ),
               child: Center(
                 child: Text(
                   'Отзывы',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: _selectedTabIndex == 1 ? Colors.white : _textDark,
+                    color: _selectedTabIndex == 1 ? Colors.white : context.textPrimary,
                   ),
                 ),
               ),
@@ -437,9 +438,9 @@ for (final module in _courseStructure) {
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: context.borderColor),
         ),
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -690,7 +691,7 @@ Widget _buildContactAuthorButton() {
         side: const BorderSide(color: Color(0xFFA58EFF)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(vertical: 16),
-        backgroundColor: Colors.white,
+      backgroundColor: context.isDark ? ThemeProvider.darkSurface : Colors.white,
       ),
     ),
   );

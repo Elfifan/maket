@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:path_provider/path_provider.dart';
+import '../providers/theme_provider.dart';
 
 class PdfViewerScreen extends StatefulWidget {
   final String assetPath;
@@ -45,7 +46,13 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title), backgroundColor: const Color(0xFFA58EFF)),
+      backgroundColor: context.bgColor,
+      appBar: AppBar(
+        title: Text(widget.title),
+        backgroundColor: Colors.transparent,
+        foregroundColor: context.textPrimary,
+        elevation: 0,
+      ),
       body: localPath != null
           ? SizedBox.expand(
               child: PDFView(

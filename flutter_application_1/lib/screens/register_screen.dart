@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
+import '../widgets/glass_container.dart';
 import 'pdf_viewer_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -21,9 +23,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _acceptedTerms = false;
   String? _errorMessage;
 
-  static const Color _bgLightGrey = Color(0xFFF8F9FB);
-  static const Color _textDark = Color(0xFF1E1E2E);
-  static const Color _textGrey = Color(0xFF9094A6);
   static const Color _primaryPurple = Color(0xFFA58EFF);
   static const Color _accentPink = Color(0xFFF2C9D4);
 
@@ -68,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.bgColor,
       appBar: _buildAppBar(),
       body: SafeArea(
         child: Consumer<AuthProvider>(
@@ -76,52 +75,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
             if (auth.isLoading) return const Center(child: CircularProgressIndicator());
 
             return SingleChildScrollView(
-              // Уменьшен вертикальный отступ экрана (с 24 до 12)
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeroBanner(), // Баннер остается без изменений
-                    
-                    const SizedBox(height: 8), // Было 32
-                    
-                    const Text(
+                    _buildHeroBanner(),
+                    const SizedBox(height: 8),
+                    Text(
                       'Регистрация',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _textDark),
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: context.textPrimary),
                     ),
-                    const SizedBox(height: 4), // Было 8
-                    const Text(
+                    const SizedBox(height: 4),
+                    Text(
                       'Создайте аккаунт, чтобы начать свое путешествие в IT',
-                      style: TextStyle(fontSize: 15, color: _textGrey, height: 1.4),
+                      style: TextStyle(fontSize: 15, color: context.textSecondary, height: 1.4),
                     ),
-                    
-                    const SizedBox(height: 16), // Было 32
-                    
+                    const SizedBox(height: 16),
                     _buildInputLabel('Электронная почта'),
                     _buildEmailField(),
-                    
-                    const SizedBox(height: 10), // Было 20
-                    
+                    const SizedBox(height: 10),
                     _buildInputLabel('Пароль'),
                     _buildPasswordField(),
-                    
-                    const SizedBox(height: 10), // Было 20
-                    
+                    const SizedBox(height: 10),
                     _buildInputLabel('Подтвердите пароль'),
                     _buildConfirmPasswordField(),
                     const SizedBox(height: 12),
                     _buildAgreementCheckbox(),
-                    
                     if (_errorMessage != null) _buildErrorMessage(),
-                    
-                    const SizedBox(height: 16), // Было 32
-                    
+                    const SizedBox(height: 16),
                     _buildRegisterButton(),
-                    
-                    const SizedBox(height: 12), // Было 24
-                    
+                    const SizedBox(height: 12),
                     _buildLoginLink(),
                   ],
                 ),
@@ -135,38 +120,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       elevation: 0,
       leading: Padding(
         padding: const EdgeInsets.all(10.0),
         child: Container(
-          decoration: BoxDecoration(color: _textDark, borderRadius: BorderRadius.circular(8)),
-          child: const Icon(Icons.person_add_alt_1, color: Colors.white, size: 18),
+          decoration: BoxDecoration(
+            color: context.isDark ? Colors.white.withValues(alpha: 0.1) : ThemeProvider.lightTextPrimary,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(Icons.person_add_alt_1, color: context.isDark ? _primaryPurple : Colors.white, size: 18),
         ),
       ),
-      title: const Text(
+      title: Text(
         'Кодикс',
-        style: TextStyle(color: _textDark, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Serif'),
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(color: const Color(0xFFEEEEEE), height: 1),
+        style: TextStyle(color: context.textPrimary, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Serif'),
       ),
     );
   }
 
   Widget _buildHeroBanner() {
-    return Container(
+    return GlassContainer(
       width: double.infinity,
-      height: 220, // Оставили исходную высоту
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFBCAFFF), _primaryPurple],
-        ),
-      ),
+      height: 220,
+      color: _primaryPurple,
+      opacity: context.isDark ? 0.2 : 0.75,
       child: Stack(
         children: [
           Positioned(
@@ -178,7 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 width: 100,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: Colors.white.withValues(alpha: context.isDark ? 0.1 : 0.9),
                   borderRadius: const BorderRadius.vertical(bottom: Radius.circular(50)),
                 ),
               ),
@@ -202,7 +180,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   width: 60,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: _textDark,
+                    color: context.isDark ? Colors.white : ThemeProvider.lightTextPrimary,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -232,25 +210,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildEye() => Container(
     width: 14,
     height: 24,
-    decoration: BoxDecoration(color: _textDark, borderRadius: BorderRadius.circular(7)),
+    decoration: BoxDecoration(
+      color: context.isDark ? Colors.white : ThemeProvider.lightTextPrimary,
+      borderRadius: BorderRadius.circular(7),
+    ),
   );
 
   Widget _buildInputLabel(String label) => Padding(
-    padding: const EdgeInsets.only(bottom: 4.0, left: 4), // Было 8.0
-    child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _textDark)),
+    padding: const EdgeInsets.only(bottom: 4.0, left: 4),
+    child: Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: context.textPrimary)),
   );
 
   InputDecoration _inputStyle(String hint, IconData icon, {Widget? suffix}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: _textGrey, fontSize: 15),
-      prefixIcon: Icon(icon, color: _textGrey, size: 22),
+      hintStyle: TextStyle(color: context.textSecondary, fontSize: 15),
+      prefixIcon: Icon(icon, color: context.textSecondary, size: 22),
       suffixIcon: suffix,
       filled: true,
-      fillColor: _bgLightGrey,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), // Было 18
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      fillColor: context.isDark ? Colors.white.withValues(alpha: 0.05) : context.surfaceColor,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: context.isDark ? BorderSide(color: context.borderColor) : BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: context.isDark ? BorderSide(color: context.borderColor) : BorderSide.none,
+      ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: _primaryPurple, width: 1.5),
@@ -260,7 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildEmailField() => TextFormField(
     controller: _emailController,
-    style: const TextStyle(color: _textDark, fontSize: 15),
+    style: TextStyle(color: context.textPrimary, fontSize: 15),
     decoration: _inputStyle('example@mail.ru', Icons.email_outlined),
     keyboardType: TextInputType.emailAddress,
     validator: (v) => (v == null || !v.contains('@')) ? 'Введите корректный email' : null,
@@ -269,9 +256,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildPasswordField() => TextFormField(
     controller: _passwordController,
     obscureText: !_passwordVisible,
-    style: const TextStyle(color: _textDark, fontSize: 15),
+    style: TextStyle(color: context.textPrimary, fontSize: 15),
     decoration: _inputStyle('********', Icons.lock_outline, suffix: IconButton(
-      icon: Icon(_passwordVisible ? Icons.visibility : Icons.visibility_off, color: _textGrey, size: 22),
+      icon: Icon(_passwordVisible ? Icons.visibility : Icons.visibility_off, color: context.textSecondary, size: 22),
       onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
     )),
     validator: (v) => (v == null || v.length < 6) ? 'Минимум 6 символов' : null,
@@ -280,9 +267,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildConfirmPasswordField() => TextFormField(
     controller: _confirmPasswordController,
     obscureText: !_confirmVisible,
-    style: const TextStyle(color: _textDark, fontSize: 15),
+    style: TextStyle(color: context.textPrimary, fontSize: 15),
     decoration: _inputStyle('********', Icons.lock_reset, suffix: IconButton(
-      icon: Icon(_confirmVisible ? Icons.visibility : Icons.visibility_off, color: _textGrey, size: 22),
+      icon: Icon(_confirmVisible ? Icons.visibility : Icons.visibility_off, color: context.textSecondary, size: 22),
       onPressed: () => setState(() => _confirmVisible = !_confirmVisible),
     )),
     validator: (v) => (v == null || v.isEmpty) ? 'Подтвердите пароль' : null,
@@ -313,7 +300,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget _buildLoginLink() => Row(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      const Text('Уже есть аккаунт?', style: TextStyle(color: _textGrey, fontSize: 15)),
+      Text('Уже есть аккаунт?', style: TextStyle(color: context.textSecondary, fontSize: 15)),
       TextButton(
         onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
         child: const Text('Войти', style: TextStyle(color: _primaryPurple, fontWeight: FontWeight.bold, fontSize: 15)),
@@ -341,20 +328,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Text('Я принимаю ', style: TextStyle(fontSize: 13, color: _textDark)),
+              Text('Я принимаю ', style: TextStyle(fontSize: 13, color: context.textPrimary)),
               GestureDetector(
                 onTap: _openTermsPdf,
                 child: const Text(
                   'пользовательское соглашение',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Color(0xFFA58EFF),
+                    color: _primaryPurple,
                     fontWeight: FontWeight.bold,
                     decoration: TextDecoration.underline,
                   ),
                 ),
               ),
-              const Text('.', style: TextStyle(fontSize: 13, color: _textDark)),
+              Text('.', style: TextStyle(fontSize: 13, color: context.textPrimary)),
             ],
           ),
         ),

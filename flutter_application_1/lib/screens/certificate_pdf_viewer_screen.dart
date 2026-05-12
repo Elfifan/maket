@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import '../providers/theme_provider.dart';
 
 class CertificatePdfViewerScreen extends StatefulWidget {
   final String certificateUrl;
@@ -67,9 +68,11 @@ class _CertificatePdfViewerScreenState extends State<CertificatePdfViewerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.bgColor,
       appBar: AppBar(
         title: Text(widget.title),
-        backgroundColor: const Color(0xFFA58EFF),
+        backgroundColor: Colors.transparent,
+        foregroundColor: context.textPrimary,
         actions: [
           if (!_isLoading && !_hasError)
             IconButton(

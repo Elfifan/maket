@@ -5,7 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import '../models/user_model.dart';
 import '../models/certificate_model.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/supabase_service.dart';
+import '../widgets/glass_container.dart';
 import 'certificate_pdf_viewer_screen.dart';
 import 'pdf_viewer_screen.dart';
 
@@ -22,11 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isEditingName = false;
   bool _isSavingName = false;
 
-  static const Color _bgLightPurple = Color(0xFFFBF4FF);
-  static const Color _textDark = Color(0xFF1E1E2E);
-  static const Color _textGrey = Color(0xFF9094A6);
   static const Color _primaryPurple = Color(0xFFA58EFF);
-  static const Color _iconPurpleBackground = Color(0xFFF5F0FF);
 
   @override
   void dispose() {
@@ -44,21 +42,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final userName = user.name ?? user.email?.split('@')[0] ?? 'Пользователь';
-    
     final avatarUrl = user.avatarUrl;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
         titleSpacing: 24,
-        title: const Text('Профиль', style: TextStyle(color: _textDark, fontSize: 20, fontWeight: FontWeight.bold)),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: const Color(0xFFEEEEEE), height: 1),
-        ),
+        title: Text('Профиль', style: TextStyle(color: context.textPrimary, fontSize: 20, fontWeight: FontWeight.bold)),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -79,9 +72,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 32),
               _buildLogoutButton(context, authProvider),
               const SizedBox(height: 24),
-              const Center(
+              Center(
                 child: Text('ВЕРСИЯ ПРИЛОЖЕНИЯ 2.4.0',
-                    style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                    style: TextStyle(color: context.textSecondary, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1)),
               ),
               const SizedBox(height: 24),
             ],
@@ -94,13 +87,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ==================== АВАТАР И ИМЯ ====================
 
   Widget _buildHeaderCard(String name, String? avatarUrl) {
-    return Container(
+    return GlassContainer(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: _bgLightPurple,
-        borderRadius: BorderRadius.circular(32),
-      ),
+      color: _primaryPurple,
+      opacity: context.isDark ? 0.1 : 0.08,
       child: Column(
         children: [
           GestureDetector(
@@ -111,7 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   width: 100,
                   height: 100,
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: context.isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey[200],
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
@@ -140,9 +131,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               );
                             },
                             errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.person, size: 50, color: _textGrey),
+                                Icon(Icons.person, size: 50, color: context.textSecondary),
                           )
-                        : const Icon(Icons.person, size: 50, color: _textGrey),
+                        : Icon(Icons.person, size: 50, color: context.textSecondary),
                   ),
                 ),
                 Positioned(
@@ -154,7 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     decoration: BoxDecoration(
                       color: _primaryPurple,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
+                      border: Border.all(color: context.bgColor, width: 3),
                     ),
                     child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
                   ),
@@ -163,31 +154,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: _textDark)),
+          Text(name, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: context.textPrimary)),
         ],
       ),
     );
   }
 
   Widget _buildNameTile(String currentName) {
-    return Container(
+    return GlassContainer(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-      ),
       child: Row(
         children: [
-          const Icon(Icons.person_outline_rounded, color: _textGrey, size: 20),
+          Icon(Icons.person_outline_rounded, color: context.textSecondary, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: _isEditingName
                 ? TextField(
                     controller: _nameController,
                     autofocus: true,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _textDark),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.textPrimary),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       isDense: true,
@@ -205,8 +191,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('ИМЯ', style: TextStyle(color: _textGrey, fontSize: 10, fontWeight: FontWeight.bold)),
-                        Text(currentName, style: const TextStyle(color: _textDark, fontSize: 14, fontWeight: FontWeight.w600)),
+                        Text('ИМЯ', style: TextStyle(color: context.textSecondary, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text(currentName, style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -331,7 +317,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Мои достижения', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark)),
+        Text('Мои достижения', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.textPrimary)),
         const SizedBox(height: 16),
         FutureBuilder<List<AchievementModel>>(
           future: SupabaseService().getUserAchievements(userId),
@@ -341,9 +327,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }
             final achievements = snapshot.data ?? [];
             if (achievements.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 30),
-                child: Center(child: Text('У вас пока нет достижений', style: TextStyle(color: _textGrey))),
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 30),
+                child: Center(child: Text('У вас пока нет достижений', style: TextStyle(color: context.textSecondary))),
               );
             }
             return SizedBox(
@@ -371,14 +357,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildAchievementCard({required String title, required String description, String? imageUrl}) {
-    return Container(
+    return GlassContainer(
       width: 180,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -386,7 +367,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             height: 70,
             width: 70,
             decoration: BoxDecoration(
-              color: _iconPurpleBackground,
+              color: _primaryPurple.withValues(alpha: context.isDark ? 0.15 : 0.08),
               borderRadius: BorderRadius.circular(12),
             ),
             child: ClipRRect(
@@ -401,9 +382,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const Spacer(),
-          Text(title, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: _textDark)),
+          Text(title, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.textPrimary)),
           const SizedBox(height: 4),
-          Text(description, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: _textGrey)),
+          Text(description, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: context.textSecondary)),
         ],
       ),
     );
@@ -415,7 +396,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Мои сертификаты', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _textDark)),
+        Text('Мои сертификаты', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.textPrimary)),
         const SizedBox(height: 16),
         FutureBuilder<List<CertificateModel>>(
           future: SupabaseService().getUserCertificates(userId),
@@ -425,9 +406,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             }
             final certificates = snapshot.data ?? [];
             if (certificates.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 30),
-                child: Center(child: Text('У вас пока нет сертификатов', style: TextStyle(color: _textGrey))),
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 30),
+                child: Center(child: Text('У вас пока нет сертификатов', style: TextStyle(color: context.textSecondary))),
               );
             }
             return SizedBox(
@@ -453,15 +434,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildCertificatePdfCard(BuildContext context, CertificateModel certificate) {
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CertificatePdfViewerScreen(certificateUrl: certificate.certificateUrl, title: 'Сертификат'))),
-      child: Container(
+      child: GlassContainer(
         width: 180,
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFFEEEEEE))),
         child: Column(
           children: [
-            Container(height: 70, width: 70, decoration: BoxDecoration(color: _iconPurpleBackground, borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.picture_as_pdf_outlined, color: _primaryPurple, size: 36)),
+            Container(
+              height: 70, width: 70,
+              decoration: BoxDecoration(
+                color: _primaryPurple.withValues(alpha: context.isDark ? 0.15 : 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.picture_as_pdf_outlined, color: _primaryPurple, size: 36),
+            ),
             const Spacer(),
-            const Text('Сертификат', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _textDark)),
+            Text('Сертификат', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: context.textPrimary)),
           ],
         ),
       ),
@@ -469,8 +456,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSettingsMenu() {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
     return Column(
       children: [
+        // Переключатель темы
+        GlassContainer(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          margin: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Icon(
+                themeProvider.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                color: _primaryPurple,
+                size: 24,
+              ),
+              const SizedBox(width: 16),
+              Text('Тёмная тема', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: context.textPrimary)),
+              const Spacer(),
+              Switch.adaptive(
+                value: themeProvider.isDarkMode,
+                onChanged: (_) => themeProvider.toggleTheme(),
+                activeTrackColor: _primaryPurple,
+                thumbColor: WidgetStateProperty.all(Colors.white),
+              ),
+            ],
+          ),
+        ),
         _buildMenuItem(icon: Icons.security_outlined, title: 'Безопасность', onTap: () => _openPdf('assets/pdf/security.pdf', 'Безопасность')),
         _buildMenuItem(icon: Icons.help_outline_rounded, title: 'Помощь', onTap: () => _openPdf('assets/pdf/help.pdf', 'Помощь')),
         _buildMenuItem(icon: Icons.info_outline_rounded, title: 'О приложении', onTap: () => _openPdf('assets/pdf/about.pdf', 'О приложении')),
@@ -490,18 +502,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildMenuItem({required IconData icon, required String title, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
+      borderRadius: BorderRadius.circular(24),
+      child: GlassContainer(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFEEEEEE))),
         child: Row(
           children: [
             Icon(icon, color: _primaryPurple, size: 24),
             const SizedBox(width: 16),
-            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: _textDark)),
+            Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: context.textPrimary)),
             const Spacer(),
-            const Icon(Icons.arrow_forward_ios_rounded, color: _textGrey, size: 16),
+            Icon(Icons.arrow_forward_ios_rounded, color: context.textSecondary, size: 16),
           ],
         ),
       ),
@@ -514,9 +525,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         authProvider.logout();
         Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
       },
-      child: Container(
+      child: GlassContainer(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFEEEEEE))),
+        color: Colors.red,
+        opacity: context.isDark ? 0.08 : 0.04,
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
+import '../widgets/glass_container.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,9 +19,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _passwordVisible = false;
   String? _errorMessage;
 
-  static const Color _bgLightGrey = Color(0xFFF8F9FB);
-  static const Color _textDark = Color(0xFF1E1E2E);
-  static const Color _textGrey = Color(0xFF9094A6);
   static const Color _primaryPurple = Color(0xFFA58EFF);
   static const Color _accentPink = Color(0xFFF2C9D4);
 
@@ -53,32 +52,28 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: Padding(
           padding: const EdgeInsets.all(10.0),
           child: Container(
             decoration: BoxDecoration(
-              color: _textDark,
+              color: context.isDark ? Colors.white.withValues(alpha: 0.1) : ThemeProvider.lightTextPrimary,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.bolt, color: Colors.white, size: 20),
+            child: Icon(Icons.bolt, color: context.isDark ? _primaryPurple : Colors.white, size: 20),
           ),
         ),
-        title: const Text(
+        title: Text(
           'Кодикс',
           style: TextStyle(
-            color: _textDark,
+            color: context.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
             fontFamily: 'Serif',
           ),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(color: const Color(0xFFEEEEEE), height: 1),
         ),
       ),
       body: SafeArea(
@@ -95,18 +90,18 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeroBanner(), // Баннер теперь снова большой и с прежними отступами
+                    _buildHeroBanner(),
                     
-                    const SizedBox(height: 8), // Уменьшенный отступ после баннера
+                    const SizedBox(height: 8),
                     
-                    const Text(
+                    Text(
                       'Вход в аккаунт',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _textDark),
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: context.textPrimary),
                     ),
                     const SizedBox(height: 4), 
-                    const Text(
+                    Text(
                       'Введите свои данные, чтобы продолжить обучение',
-                      style: TextStyle(fontSize: 15, color: _textGrey, height: 1.4),
+                      style: TextStyle(fontSize: 15, color: context.textSecondary, height: 1.4),
                     ),
                     
                     const SizedBox(height: 16), 
@@ -151,17 +146,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildHeroBanner() {
-    return Container(
+    return GlassContainer(
       width: double.infinity,
-      height: 220, // ВЕРНУЛИ ИСХОДНУЮ ВЫСОТУ
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFBCAFFF), Color(0xFFA58EFF)],
-        ),
-      ),
+      height: 220,
+      color: _primaryPurple,
+      opacity: context.isDark ? 0.2 : 0.75,
       child: Stack(
         children: [
           Positioned(
@@ -173,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 100,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: Colors.white.withValues(alpha: context.isDark ? 0.1 : 0.9),
                   borderRadius: const BorderRadius.vertical(bottom: Radius.circular(50)),
                 ),
               ),
@@ -183,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 20), // ВЕРНУЛИ 20
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -192,21 +181,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     _buildEye(),
                   ],
                 ),
-                const SizedBox(height: 24), // ВЕРНУЛИ 24
+                const SizedBox(height: 24),
                 Container(
                   width: 60,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: _textDark,
+                    color: context.isDark ? Colors.white : ThemeProvider.lightTextPrimary,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 24), // ВЕРНУЛИ 24
+                const SizedBox(height: 24),
                 const Text(
                   'С возвращением!',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
-                const SizedBox(height: 8), // ВЕРНУЛИ 8
+                const SizedBox(height: 8),
                 Text(
                   'Продолжай учиться и создавай будущее',
                   textAlign: TextAlign.center,
@@ -227,25 +216,34 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildEye() => Container(
     width: 14,
     height: 24,
-    decoration: BoxDecoration(color: _textDark, borderRadius: BorderRadius.circular(7)),
+    decoration: BoxDecoration(
+      color: context.isDark ? Colors.white : ThemeProvider.lightTextPrimary,
+      borderRadius: BorderRadius.circular(7),
+    ),
   );
 
   Widget _buildInputLabel(String label) => Padding(
     padding: const EdgeInsets.only(bottom: 4.0, left: 4),
-    child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: _textDark)),
+    child: Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: context.textPrimary)),
   );
 
   InputDecoration _getInputDecoration({required String hint, Widget? prefix, Widget? suffix}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: _textGrey, fontSize: 15),
+      hintStyle: TextStyle(color: context.textSecondary, fontSize: 15),
       prefixIcon: prefix,
       suffixIcon: suffix,
       filled: true,
-      fillColor: _bgLightGrey,
+      fillColor: context.isDark ? Colors.white.withValues(alpha: 0.05) : context.surfaceColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: context.isDark ? BorderSide(color: context.borderColor) : BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: context.isDark ? BorderSide(color: context.borderColor) : BorderSide.none,
+      ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: _primaryPurple, width: 1.5),
@@ -255,10 +253,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildEmailField() => TextFormField(
     controller: _emailController,
-    style: const TextStyle(color: _textDark, fontSize: 15),
+    style: TextStyle(color: context.textPrimary, fontSize: 15),
     decoration: _getInputDecoration(
       hint: 'example@mail.ru',
-      prefix: const Icon(Icons.email_outlined, color: _textGrey, size: 22),
+      prefix: Icon(Icons.email_outlined, color: context.textSecondary, size: 22),
     ),
     keyboardType: TextInputType.emailAddress,
     validator: (value) => (value == null || !value.contains('@')) ? 'Введите корректный email' : null,
@@ -267,12 +265,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildPasswordField() => TextFormField(
     controller: _passwordController,
     obscureText: !_passwordVisible,
-    style: const TextStyle(color: _textDark, fontSize: 15),
+    style: TextStyle(color: context.textPrimary, fontSize: 15),
     decoration: _getInputDecoration(
       hint: '********',
-      prefix: const Icon(Icons.lock_outline, color: _textGrey, size: 22),
+      prefix: Icon(Icons.lock_outline, color: context.textSecondary, size: 22),
       suffix: IconButton(
-        icon: Icon(_passwordVisible ? Icons.visibility : Icons.visibility_off, color: _textGrey, size: 22),
+        icon: Icon(_passwordVisible ? Icons.visibility : Icons.visibility_off, color: context.textSecondary, size: 22),
         onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
       ),
     ),
@@ -308,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildRegisterLink() => Row(
     mainAxisAlignment: MainAxisAlignment.center,
     children: [
-      const Text('Нет аккаунта?', style: TextStyle(color: _textGrey, fontSize: 15)),
+      Text('Нет аккаунта?', style: TextStyle(color: context.textSecondary, fontSize: 15)),
       const SizedBox(width: 4),
       TextButton(
         onPressed: () => Navigator.pushReplacementNamed(context, '/register'),

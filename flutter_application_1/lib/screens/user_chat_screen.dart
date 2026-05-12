@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/theme_provider.dart';
 import '../models/chat_models.dart';
 import '../services/chat_service.dart';
 
@@ -150,12 +151,12 @@ class _UserChatScreenState extends State<UserChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgLight,
+      backgroundColor: context.bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: _textGrey, size: 20),
+          icon: Icon(Icons.arrow_back_ios_rounded, color: context.textSecondary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
@@ -317,7 +318,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                         end: Alignment.bottomRight,
                       )
                     : null,
-                color: isMe ? null : Colors.white,
+                color: isMe ? null : (context.isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
@@ -401,10 +402,10 @@ class _UserChatScreenState extends State<UserChatScreen> {
   Widget _buildMessageInput() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: context.isDark ? ThemeProvider.darkSurface : Colors.white,
         border: Border(
-          top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+          top: BorderSide(color: context.borderColor, width: 1),
         ),
       ),
       child: SafeArea(
@@ -413,12 +414,12 @@ class _UserChatScreenState extends State<UserChatScreen> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: _bgLight,
+                  color: context.isDark ? Colors.white.withValues(alpha: 0.05) : _bgLight,
                   borderRadius: BorderRadius.circular(25),
                 ),
                 child: TextField(
                   controller: _messageController,
-                  style: GoogleFonts.roboto(fontSize: 15, color: _textDark),
+                  style: GoogleFonts.roboto(fontSize: 15, color: context.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Ваше сообщение...',
                     hintStyle: GoogleFonts.roboto(color: _textGrey),
