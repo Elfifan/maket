@@ -203,7 +203,7 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Отзывы', style: GoogleFonts.roboto(fontSize: 20, fontWeight: FontWeight.bold, color: _textDark)),
+              Text('Отзывы', style: GoogleFonts.roboto(fontSize: 20, fontWeight: FontWeight.bold, color: context.textPrimary)),
               if (widget.isEnrolled && !_hasUserReview)
                 TextButton.icon(
                   onPressed: _showAddReviewDialog,
@@ -242,7 +242,7 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
                         }),
                       ),
                       const SizedBox(height: 4),
-                      Text('${_reviews.length} отзывов', style: GoogleFonts.roboto(color: _textGrey, fontSize: 13)),
+                      Text('${_reviews.length} отзывов', style: GoogleFonts.roboto(color: context.textSecondary, fontSize: 13)),
                     ],
                   ),
                 ],
@@ -257,7 +257,7 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
                 children: [
                   Icon(Icons.rate_review_outlined, size: 48, color: _textGrey.withValues(alpha: 0.3)),
                   const SizedBox(height: 12),
-                  Text('Пока нет отзывов', style: GoogleFonts.roboto(color: _textGrey, fontSize: 14)),
+                  Text('Пока нет отзывов', style: GoogleFonts.roboto(color: context.textSecondary, fontSize: 14)),
                   const SizedBox(height: 4),
                   Text('Будьте первым!', style: GoogleFonts.roboto(color: _primaryPurple, fontSize: 13)),
                 ],
@@ -290,10 +290,15 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [_primaryPurple, Color(0xFFF2C9D4)],
+                              gradient: LinearGradient(
+                                colors: context.isDark
+                                    ? [_primaryPurple.withValues(alpha: 0.25), const Color(0xFFF2C9D4).withValues(alpha: 0.15)]
+                                    : [_primaryPurple, const Color(0xFFF2C9D4)],
                               ),
                               borderRadius: BorderRadius.circular(12),
+                              border: context.isDark
+                                  ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                                  : null,
                             ),
                             child: Center(
                               child: Text(
@@ -307,7 +312,7 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(review.displayName, style: GoogleFonts.roboto(fontWeight: FontWeight.w600, fontSize: 14, color: _textDark)),
+                                Text(review.displayName, style: GoogleFonts.roboto(fontWeight: FontWeight.w600, fontSize: 14, color: context.textPrimary)),
                                 const SizedBox(height: 2),
                                 Row(
                                   children: [
@@ -327,7 +332,7 @@ class _CourseReviewsSectionState extends State<CourseReviewsSection> {
                       ),
                       if (description.isNotEmpty) ...[
                         const SizedBox(height: 10),
-                        Text(description, style: GoogleFonts.roboto(fontSize: 14, color: _textDark, height: 1.4)),
+                        Text(description, style: GoogleFonts.roboto(fontSize: 14, color: context.textPrimary, height: 1.4)),
                       ],
                     ],
                   ),
