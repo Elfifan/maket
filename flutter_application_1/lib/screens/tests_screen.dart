@@ -188,7 +188,11 @@ class _TestsScreenState extends State<TestsScreen> {
                           ),
                           Text(
                             '${(progress * 100).toInt()}%',
-                            style: const TextStyle(color: _primaryPurple, fontSize: 13, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: isDark ? _primaryPurple.withValues(alpha: 0.8) : _primaryPurple,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold
+                            ),
                           ),
                         ],
                       ),
@@ -199,7 +203,9 @@ class _TestsScreenState extends State<TestsScreen> {
                           value: progress,
                           minHeight: 8,
                           backgroundColor: isDark ? Colors.white10 : Colors.black12,
-                          valueColor: const AlwaysStoppedAnimation<Color>(_primaryPurple),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            isDark ? _primaryPurple.withValues(alpha: 0.4) : _primaryPurple,
+                          ),
                         ),
                       ),
                     ],
@@ -374,23 +380,53 @@ class _TestsScreenState extends State<TestsScreen> {
   }
 
   Widget _buildMainButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryPurple,
-          foregroundColor: Colors.white,
-          elevation: 4,
-          shadowColor: _primaryPurple.withValues(alpha: 0.4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    final isDark = context.isDark;
+    final isEnabled = _isAnswered || _selectedAnswer != null;
+
+    return GestureDetector(
+      onTap: isEnabled ? (_isAnswered ? _nextTest : _submitAnswer) : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: double.infinity,
+        height: 56,
+        decoration: BoxDecoration(
+          gradient: isEnabled
+              ? LinearGradient(
+                  colors: isDark
+                      ? [_primaryPurple.withValues(alpha: 0.25), _accentPink.withValues(alpha: 0.15)]
+                      : [_primaryPurple, _accentPink],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isEnabled ? null : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+          borderRadius: BorderRadius.circular(16),
+          border: isEnabled && isDark
+              ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+              : null,
+          boxShadow: isEnabled && !isDark
+              ? [
+                  BoxShadow(
+                    color: _primaryPurple.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  )
+                ]
+              : [],
         ),
-        onPressed: _isAnswered ? _nextTest : (_selectedAnswer == null ? null : _submitAnswer),
-        child: Text(
-          _isAnswered
-              ? (_currentTestIndex < widget.tests.length - 1 ? 'Дальше' : 'Результаты')
-              : 'Проверить ответ',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        child: Center(
+          child: Text(
+            _isAnswered
+                ? (_currentTestIndex < widget.tests.length - 1 ? 'Дальше' : 'Результаты')
+                : 'Проверить ответ',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isEnabled 
+                  ? Colors.white 
+                  : (isDark ? Colors.white24 : Colors.black26),
+            ),
+          ),
         ),
       ),
     );
