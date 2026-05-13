@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/practical_task_model.dart';
 import '../models/test_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/supabase_service.dart';
+import '../widgets/glass_container.dart';
 import 'submodule_content_screen.dart';
 
 class TestsScreen extends StatefulWidget {
@@ -39,10 +41,15 @@ class _TestsScreenState extends State<TestsScreen> {
   bool _isAnswered = false;
   bool _isCorrect = false;
   int _correctAnswers = 0;
+  bool _showResults = false;
+
+  static const Color _primaryPurple = Color(0xFFA58EFF);
+  static const Color _accentPink = Color(0xFFF2C9D4);
 
   void _submitAnswer() {
     if (_selectedAnswer == null) return;
 
+    HapticFeedback.mediumImpact();
     final rightAnswer = widget.tests[_currentTestIndex].rightAnswer;
     setState(() {
       _isAnswered = true;
@@ -52,6 +59,7 @@ class _TestsScreenState extends State<TestsScreen> {
   }
 
   void _nextTest() {
+    HapticFeedback.lightImpact();
     if (_currentTestIndex < widget.tests.length - 1) {
       setState(() {
         _currentTestIndex++;
@@ -60,16 +68,17 @@ class _TestsScreenState extends State<TestsScreen> {
         _isCorrect = false;
       });
     } else {
-      _showResults();
+      _finishTest();
     }
   }
 
-  void _showResults() async {
-    // Сохраняем результат теста
+  void _finishTest() async {
+    setState(() => _showResults = true);
+    HapticFeedback.heavyImpact();
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (authProvider.currentUser != null) {
       try {
-        // Определяем submoduleId - берем из первого теста или из параметров
         int submoduleId = widget.tests.isNotEmpty ? (widget.tests[0].submoduleId ?? 0) : 0;
         if (submoduleId == 0 && widget.allSubmodules != null && widget.currentIndex >= 0 && widget.currentIndex < widget.allSubmodules!.length) {
           submoduleId = widget.allSubmodules![widget.currentIndex]['id'] as int;
@@ -81,39 +90,16 @@ class _TestsScreenState extends State<TestsScreen> {
             submoduleId,
             widget.tests.length,
             _correctAnswers,
-            _correctAnswers >= (widget.tests.length / 2).ceil(), // isCorrect - 50% и более правильных ответов
+            _correctAnswers >= (widget.tests.length / 2).ceil(),
           );
         }
       } catch (e) {
         debugPrint('Error saving test result: $e');
-        // Продолжаем показывать результаты, даже если сохранение не удалось
       }
     }
-
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Результаты тестирования'),
-        content: Text(
-          'Вы ответили правильно на $_correctAnswers из ${widget.tests.length} вопросов.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Закрыть диалог
-              _goToNextItem();
-            },
-            child: const Text('Следующий урок'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _goToNextItem() {
-    // Проверяем, есть ли следующий подмодуль
     if (widget.allSubmodules != null && widget.currentIndex >= 0 && widget.currentIndex + 1 < widget.allSubmodules!.length) {
       final next = widget.allSubmodules![widget.currentIndex + 1];
       final nextContentUrl = next['content'] as String?;
@@ -137,124 +123,389 @@ class _TestsScreenState extends State<TestsScreen> {
         return;
       }
     }
-
-    // Если следующего подмодуля нет, возвращаемся назад
     Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDark;
+
     if (widget.tests.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Тесты'),
-          backgroundColor: Colors.transparent,
-          foregroundColor: context.textPrimary,
-          elevation: 0,
-          centerTitle: true,
-        ),
-        backgroundColor: context.bgColor,
-        body: const Center(
-          child: Text('Тесты не найдены'),
-        ),
-      );
+      return _buildEmptyState('Тесты не найдены');
+    }
+
+    if (_showResults) {
+      return _buildResultsScreen();
     }
 
     final currentTest = widget.tests[_currentTestIndex];
     final options = currentTest.answerOptions;
-
-    if (options.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Тесты'),
-          backgroundColor: Colors.transparent,
-          foregroundColor: context.textPrimary,
-          elevation: 0,
-          centerTitle: true,
-        ),
-        backgroundColor: context.bgColor,
-        body: const Center(
-          child: Text('Вопрос не имеет вариантов ответа'),
-        ),
-      );
-    }
+    final progress = (_currentTestIndex + 1) / widget.tests.length;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('${widget.submoduleName} - Тест ${_currentTestIndex + 1}/${widget.tests.length}'),
+        title: Text(widget.submoduleName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
-        foregroundColor: context.textPrimary,
         elevation: 0,
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       backgroundColor: context.bgColor,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              currentTest.question ?? 'Вопрос отсутствует',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.textPrimary),
+      body: Stack(
+        children: [
+          // Декоративные сферы
+          if (isDark) ...[
+            Positioned(
+              top: 100,
+              right: -50,
+              child: _buildDecorativeSphere(_primaryPurple.withValues(alpha: 0.1), 200),
             ),
-            const SizedBox(height: 24),
-            ...options.map((option) {
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: RadioListTile<String>(
-                  value: option,
-                  // ignore: deprecated_member_use
-                  groupValue: _selectedAnswer,
-                  title: Text(option, style: const TextStyle(fontSize: 16)),
-                  // ignore: deprecated_member_use
-                  onChanged: _isAnswered
-                      ? null
-                      : (value) {
-                          setState(() {
-                            _selectedAnswer = value;
-                          });
-                        },
+            Positioned(
+              bottom: 100,
+              left: -50,
+              child: _buildDecorativeSphere(_accentPink.withValues(alpha: 0.1), 250),
+            ),
+          ],
+
+          SafeArea(
+            child: Column(
+              children: [
+                // Прогресс бар
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Вопрос ${_currentTestIndex + 1} из ${widget.tests.length}',
+                            style: TextStyle(color: context.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            '${(progress * 100).toInt()}%',
+                            style: const TextStyle(color: _primaryPurple, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 8,
+                          backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                          valueColor: const AlwaysStoppedAnimation<Color>(_primaryPurple),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            }),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFA58EFF),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.1, 0),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: SingleChildScrollView(
+                      key: ValueKey<int>(_currentTestIndex),
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Карточка вопроса
+                          GlassContainer(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(24),
+                            borderRadius: 24,
+                            child: Text(
+                              currentTest.question ?? '',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: context.textPrimary,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          // Варианты ответа
+                          ...options.map((option) => _buildOption(option)),
+                          
+                          const SizedBox(height: 40),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-                onPressed: _isAnswered ? _nextTest : (_selectedAnswer == null ? null : _submitAnswer),
-                child: Text(
-                  _isAnswered
-                      ? (_currentTestIndex < widget.tests.length - 1 ? 'Следующий вопрос' : 'Завершить тест')
-                      : 'Проверить ответ',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+
+                // Панель действий
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isAnswered) _buildFeedbackArea(currentTest),
+                      const SizedBox(height: 16),
+                      _buildMainButton(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOption(String option) {
+    final isSelected = _selectedAnswer == option;
+    final isDark = context.isDark;
+
+    return GestureDetector(
+      onTap: _isAnswered ? null : () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedAnswer = option);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? _primaryPurple.withValues(alpha: isDark ? 0.2 : 0.1) 
+              : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected 
+                ? _primaryPurple 
+                : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)),
+            width: 2,
+          ),
+          boxShadow: isSelected ? [
+            BoxShadow(color: _primaryPurple.withValues(alpha: 0.2), blurRadius: 10, offset: const Offset(0, 4))
+          ] : [],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? _primaryPurple : (isDark ? Colors.white24 : Colors.black26),
+                  width: 2,
+                ),
+                color: isSelected ? _primaryPurple : Colors.transparent,
+              ),
+              child: isSelected 
+                  ? const Icon(Icons.check, color: Colors.white, size: 16) 
+                  : null,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                option,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? _primaryPurple : context.textPrimary,
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              padding: _isAnswered ? const EdgeInsets.all(16) : EdgeInsets.zero,
-              decoration: _isAnswered ? BoxDecoration(
-                color: _isCorrect ? const Color(0xFFDFF5E7) : const Color(0xFFFDE9E9),
-                borderRadius: BorderRadius.circular(12),
-              ) : null,
-              child: _isAnswered ? Text(
-                _isCorrect ? 'Правильно!' : 'Неправильно. Правильный ответ: ${currentTest.rightAnswer ?? 'Не указан'}',
-                style: TextStyle(
-                  color: _isCorrect ? const Color(0xFF1C6B34) : const Color(0xFF8A1F1F),
-                  fontSize: 16,
-                ),
-              ) : const SizedBox.shrink(),
             ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildFeedbackArea(TestModel currentTest) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _isCorrect 
+            ? Colors.green.withValues(alpha: 0.1) 
+            : Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _isCorrect ? Colors.green.withValues(alpha: 0.3) : Colors.red.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _isCorrect ? Icons.check_circle_rounded : Icons.error_rounded,
+            color: _isCorrect ? Colors.green : Colors.red,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _isCorrect 
+                  ? 'Отлично! Вы ответили правильно.' 
+                  : 'Не совсем... Правильно: ${currentTest.rightAnswer}',
+              style: TextStyle(
+                color: _isCorrect ? Colors.green.shade700 : Colors.red.shade700,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _primaryPurple,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shadowColor: _primaryPurple.withValues(alpha: 0.4),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        onPressed: _isAnswered ? _nextTest : (_selectedAnswer == null ? null : _submitAnswer),
+        child: Text(
+          _isAnswered
+              ? (_currentTestIndex < widget.tests.length - 1 ? 'Дальше' : 'Результаты')
+              : 'Проверить ответ',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultsScreen() {
+    final percent = (_correctAnswers / widget.tests.length * 100).toInt();
+    final isDark = context.isDark;
+
+    return Scaffold(
+      backgroundColor: context.bgColor,
+      body: Stack(
+        children: [
+          if (isDark) ...[
+            Positioned(top: -50, left: -50, child: _buildDecorativeSphere(_primaryPurple.withValues(alpha: 0.15), 300)),
+            Positioned(bottom: -50, right: -50, child: _buildDecorativeSphere(_accentPink.withValues(alpha: 0.15), 300)),
+          ],
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: _primaryPurple.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      percent >= 50 ? Icons.emoji_events_rounded : Icons.psychology_rounded,
+                      size: 64,
+                      color: _primaryPurple,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    percent >= 50 ? 'Поздравляем!' : 'Нужно потренироваться',
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: context.textPrimary),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Вы успешно ответили на $_correctAnswers из ${widget.tests.length} вопросов',
+                    style: TextStyle(fontSize: 16, color: context.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 48),
+                  
+                  // Кольцо прогресса
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 140,
+                        height: 140,
+                        child: CircularProgressIndicator(
+                          value: _correctAnswers / widget.tests.length,
+                          strokeWidth: 12,
+                          backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                          valueColor: const AlwaysStoppedAnimation<Color>(_primaryPurple),
+                        ),
+                      ),
+                      Text(
+                        '$percent%',
+                        style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: context.textPrimary),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 64),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryPurple,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: _goToNextItem,
+                      child: const Text('Продолжить обучение', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDecorativeSphere(Color color, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color, Colors.transparent],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+      backgroundColor: context.bgColor,
+      body: Center(
+        child: Text(message, style: TextStyle(color: context.textSecondary)),
+      ),
+    );
+  }
 }
+
