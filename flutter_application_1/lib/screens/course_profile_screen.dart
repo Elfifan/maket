@@ -16,6 +16,7 @@ import 'tests_screen.dart';
 import 'user_chat_screen.dart';
 import 'practical_task_screen.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/payment_dialog.dart';
 
 class CourseProfileScreen extends StatefulWidget {
   final CourseModel course;
@@ -690,7 +691,7 @@ Widget _buildActionButton() {
   return _buttonTemplate(
     text: _isPurchasing ? 'Оформление...' : 'Записаться за ${widget.course.price?.toInt() ?? 0} ₽',
     onPressed: _isPurchasing ? null : _handlePurchase,
-    isAccent: true,
+    isAccent: false, // Используем стиль "Продолжить обучение"
   );
 }
 
@@ -800,10 +801,10 @@ Widget _buttonTemplate({
                 end: Alignment.bottomRight,
               ),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                'Продолжить обучение',
-                style: TextStyle(
+                text,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -866,6 +867,21 @@ Widget _buttonTemplate({
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (authProvider.currentUser == null) return;
 
+    final price = widget.course.price ?? 0;
+    
+    // Если курс платный, показываем окно оплаты
+    if (price > 0) {
+      final bool? paymentSuccess = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => PaymentDialog(amount: price.toDouble()),
+      );
+      
+      if (paymentSuccess != true) {
+        return; // Пользователь отменил оплату или произошла ошибка
+      }
+    }
+
     setState(() => _isPurchasing = true);
     
     final success = await SupabaseService().purchaseCourse(
@@ -881,7 +897,12 @@ Widget _buttonTemplate({
       });
       
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(success ? 'Вы успешно записаны!' : 'Ошибка при покупке')),
+        SnackBar(
+          content: Text(success 
+              ? 'Вы успешно записаны! Чек отправлен на почту.' 
+              : 'Ошибка при покупке'),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
       );
     }
   }
