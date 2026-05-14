@@ -433,7 +433,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildCertificatePdfCard(BuildContext context, CertificateModel certificate) {
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CertificatePdfViewerScreen(certificateUrl: certificate.certificateUrl, title: 'Сертификат'))),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CertificatePdfViewerScreen(
+            certificateUrl: certificate.certificateUrl,
+            title: certificate.courseName ?? 'Сертификат',
+          ),
+        ),
+      ),
       child: GlassContainer(
         width: 180,
         padding: const EdgeInsets.all(16),
@@ -448,7 +456,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: const Icon(Icons.picture_as_pdf_outlined, color: _primaryPurple, size: 36),
             ),
             const Spacer(),
-            Text('Сертификат', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: context.textPrimary)),
+            Text(
+              certificate.courseName ?? 'Сертификат',
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.textPrimary),
+            ),
           ],
         ),
       ),

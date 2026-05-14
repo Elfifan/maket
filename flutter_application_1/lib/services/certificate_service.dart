@@ -58,7 +58,7 @@ class CertificateService {
     try {
       final response = await _supabase
           .from('certificates')
-          .select()
+          .select('*, courses(name)')
           .eq('id_user', userId)
           .eq('id_courses', courseId)
           .order('id', ascending: true)
@@ -297,7 +297,7 @@ class CertificateService {
             'certificate_url': certificateUrl,
             'verification_code': verificationCode,
           })
-          .select()
+          .select('*, courses(name)')
           .single();
 
       return CertificateModel.fromJson(response);
