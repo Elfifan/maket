@@ -200,9 +200,9 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
       final coursesResp = await _client
           .from('courses')
           .select(
-            'id,id_employee,name,description,date_create,price,complexity,status',
+            'id,id_employee,name,description,icon,date_create,price,complexity,status',
           )
-          .filter('id', 'in', '(${ids.join(',')})')
+          .inFilter('id', ids.toSet().toList())
           .eq('status', 'Активный');
       final list = List<Map<String, dynamic>>.from(coursesResp as List);
       return list.map((j) => CourseModel.fromJson(j)).toList();

@@ -14,6 +14,7 @@ import '../providers/theme_provider.dart';
 import '../services/supabase_service.dart';
 import '../services/certificate_service.dart';
 import 'tests_screen.dart';
+import 'practical_task_screen.dart';
 import '../models/practical_task_model.dart';
 import '../widgets/glass_container.dart';
 
@@ -46,6 +47,9 @@ class SubmoduleContentScreen extends StatefulWidget {
 }
 
 class _SubmoduleContentScreenState extends State<SubmoduleContentScreen> {
+  static const Color _primaryPurple = Color(0xFFA58EFF);
+  static const Color _accentPink = Color(0xFFF2C9D4);
+
   String _markdownContent = "";
   bool _isLoading = true;
   String? _error;
@@ -324,7 +328,28 @@ void initState() {
       return;
     }
 
-    // Если тестов нет, переходим к следующему подмодулю
+    // Если тестов нет, проверяем практические задания
+    final tasks = widget.practicalTasks?[widget.submoduleId];
+    if (tasks != null && tasks.isNotEmpty) {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PracticalTaskScreen(
+            task: tasks[0],
+            courseId: widget.courseId,
+            courseName: widget.courseName,
+            allSubmodules: widget.allSubmodules,
+            currentIndex: widget.currentIndex,
+            submoduleTests: widget.submoduleTests,
+            practicalTasks: widget.practicalTasks,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Если ничего нет, переходим к следующему подмодулю
     final next = _nextSubmodule;
     if (next == null) return;
 
@@ -366,6 +391,12 @@ void initState() {
         foregroundColor: context.textPrimary,
         elevation: 0,
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded),
+          onPressed: () {
+            Navigator.of(context).popUntil((route) => route.settings.name == 'course_profile');
+          },
+        ),
       ),
       body: Stack(
         children: [
@@ -419,6 +450,9 @@ void initState() {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _isVideo ? _buildVideoUI() : _buildMarkdownUI(),
+                                const SizedBox(height: 24),
+                                _buildBottomNavigation(),
+                                const SizedBox(height: 40),
                               ],
                             ),
                           ),
@@ -650,62 +684,73 @@ void initState() {
   }
 
   Widget _buildBottomNavigation() {
-    if (_hasNextSubmodule) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFA58EFF),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
+    if (!_hasNextSubmodule && !_isLastSubmodule) return const SizedBox.shrink();
+
+    final String text = _hasNextSubmodule 
+        ? 'Перейти к следующему уроку' 
+        : 'Завершить курс и получить сертификат';
+    final VoidCallback onPressed = _hasNextSubmodule ? _goToNextSubmodule : _completeCourse;
+    final bool isLast = _isLastSubmodule && !_hasNextSubmodule;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: GestureDetector(
+            onTap: onPressed,
+            child: Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            onPressed: _goToNextSubmodule,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Перейти к следующему уроку',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                gradient: LinearGradient(
+                  colors: isLast 
+                    ? [Colors.green.withValues(alpha: 0.6), Colors.green.withValues(alpha: 0.4)]
+                    : [
+                        _primaryPurple.withValues(alpha: 0.18),
+                        const Color(0xFFF2C9D4).withValues(alpha: 0.12),
+                      ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (_isLastSubmodule) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isLast 
+                      ? Colors.green.withValues(alpha: 0.3)
+                      : Colors.white.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      text,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Color(0x80000000),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!isLast) ...[
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                    ],
+                  ],
+                ),
               ),
             ),
-            onPressed: _completeCourse,
-            child: const Text(
-              'Завершить курс и получить сертификат',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
           ),
         ),
-      );
-    }
-
-    return const SizedBox.shrink();
+      ),
+    );
   }
 
   // Виджет для отображения текста (ваш текущий Markdown)

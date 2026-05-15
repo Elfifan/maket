@@ -4,12 +4,14 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../models/practical_task_model.dart';
+import '../models/test_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/judge0_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/glass_container.dart';
 import 'dart:ui' as ui;
+import 'submodule_content_screen.dart';
 
 class PracticalTaskScreen extends StatefulWidget {
   final PracticalTaskModel task;
@@ -18,6 +20,7 @@ class PracticalTaskScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? allSubmodules;
   final int currentIndex;
   final Map<int, List<PracticalTaskModel>>? practicalTasks;
+  final Map<int, List<TestModel>>? submoduleTests;
 
   const PracticalTaskScreen({
     super.key,
@@ -27,6 +30,7 @@ class PracticalTaskScreen extends StatefulWidget {
     this.allSubmodules,
     this.currentIndex = 0,
     this.practicalTasks,
+    this.submoduleTests,
   });
 
   @override
@@ -129,6 +133,33 @@ class _PracticalTaskScreenState extends State<PracticalTaskScreen> {
     }
   }
 
+  void _goToNextItem() {
+    if (widget.allSubmodules != null && widget.currentIndex >= 0 && widget.currentIndex + 1 < widget.allSubmodules!.length) {
+      final next = widget.allSubmodules![widget.currentIndex + 1];
+      final nextContentUrl = next['content'] as String?;
+      if (nextContentUrl != null && nextContentUrl.isNotEmpty) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SubmoduleContentScreen(
+              title: next['name'] ?? 'Следующий урок',
+              contentUrl: nextContentUrl,
+              submoduleId: next['id'] as int,
+              courseId: widget.courseId,
+              courseName: widget.courseName,
+              allSubmodules: widget.allSubmodules,
+              currentIndex: widget.currentIndex + 1,
+              submoduleTests: widget.submoduleTests,
+              practicalTasks: widget.practicalTasks,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDark;
@@ -145,7 +176,9 @@ class _PracticalTaskScreenState extends State<PracticalTaskScreen> {
             color: context.textPrimary,
             size: 20,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.of(context).popUntil((route) => route.settings.name == 'course_profile');
+          },
         ),
         title: Text(
           widget.task.name,
@@ -550,7 +583,7 @@ class _PracticalTaskScreenState extends State<PracticalTaskScreen> {
     return Padding(
       padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
       child: GestureDetector(
-          onTap: isEnabled ? _runTests : null,
+          onTap: isEnabled ? (_isCompleted ? _goToNextItem : _runTests) : null,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: BackdropFilter(
@@ -609,7 +642,7 @@ class _PracticalTaskScreenState extends State<PracticalTaskScreen> {
                         const SizedBox(width: 12),
                         Text(
                           _isCompleted
-                              ? 'Пройдено успешно'
+                              ? 'Дальше'
                               : 'Отправить на проверку',
                           style: const TextStyle(
                             color: Colors.white,

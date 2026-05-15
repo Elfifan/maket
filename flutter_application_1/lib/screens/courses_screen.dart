@@ -54,7 +54,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
         _allCourses.clear();
         _allCourses.addAll(allCourses);
         _myCourses = myCourses;
-        _applyFilter('Все');
+        _applyFilter(_activeFilter);
       });
     } catch (e) {
       debugPrint('Ошибка: $e');
@@ -84,135 +84,139 @@ class _CoursesScreenState extends State<CoursesScreen> {
     return Scaffold(
       backgroundColor: context.bgColor,
       appBar: _buildAppBar(),
-      body: _loading 
+      body: _loading
         ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
-        : CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+        : RefreshIndicator(
+            onRefresh: _loadCourses,
+            color: _primaryPurple,
+            child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Доброе утро,\n$userName',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: context.textPrimary,
-                              height: 1.2,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                'Доброе утро,\n$userName',
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: context.textPrimary,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text('👏', style: TextStyle(fontSize: 26)),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          const Text('👏', style: TextStyle(fontSize: 26)),
+                          const SizedBox(height: 24),
+                          _buildPathBanner(),
+                          const SizedBox(height: 32),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Направления',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      _buildPathBanner(),
-                      const SizedBox(height: 32),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    ),
+                  ),
+                  
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 45,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: _categories.length,
+                        itemBuilder: (context, index) => _buildCategoryChip(
+                          _categories[index]['label'],
+                          _categories[index]['icon'],
+                        ),
+                      ),
+                    ),
+                  ),
+    
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+                      child: Row(
                         children: [
                           Text(
-                            'Направления',
+                            _activeFilter == 'Мои курсы' ? 'Мои курсы' : 'Новые курсы',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: context.textPrimary,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  ),
-                ),
-              ),
-              
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 45,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) => _buildCategoryChip(
-                      _categories[index]['label'],
-                      _categories[index]['icon'],
-                    ),
-                  ),
-                ),
-              ),
-
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-                  child: Row(
-                    children: [
-                      Text(
-                        _activeFilter == 'Мои курсы' ? 'Мои курсы' : 'Новые курсы',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: context.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: context.surfaceColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${_displayCourses.length}',
-                          style: TextStyle(
-                            color: context.textSecondary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                sliver: _displayCourses.isEmpty
-                    ? SliverToBoxAdapter(
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(40),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: context.surfaceColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             child: Text(
-                              'Курсы не найдены',
+                              '${_displayCourses.length}',
                               style: TextStyle(
                                 color: context.textSecondary,
-                                fontSize: 16,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                        ),
-                      )
-                    : SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          childAspectRatio: 0.75,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildCourseCard(_displayCourses[index]),
-                          childCount: _displayCourses.length,
-                        ),
+                        ],
                       ),
+                    ),
+                  ),
+    
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    sliver: _displayCourses.isEmpty
+                        ? SliverToBoxAdapter(
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(40),
+                                child: Text(
+                                  'Курсы не найдены',
+                                  style: TextStyle(
+                                    color: context.textSecondary,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : SliverGrid(
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 0.75,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => _buildCourseCard(_displayCourses[index]),
+                              childCount: _displayCourses.length,
+                            ),
+                          ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
           ),
     );
   }
@@ -320,6 +324,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
+                        settings: const RouteSettings(name: 'course_profile'),
                         builder: (_) => CourseProfileScreen(course: _myCourses.first),
                       ),
                     );
@@ -424,10 +429,16 @@ Widget _buildCourseIcon(String? icon) {
 
   Widget _buildCourseCard(CourseModel course) {
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => CourseProfileScreen(course: course)),
-      ),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'course_profile'),
+            builder: (_) => CourseProfileScreen(course: course),
+          ),
+        );
+        _loadCourses();
+      },
       child: GlassContainer(
         padding: EdgeInsets.zero,
         child: Column(

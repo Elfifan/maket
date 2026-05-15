@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import '../providers/theme_provider.dart';
 import '../services/supabase_service.dart';
 import '../widgets/glass_container.dart';
 import 'submodule_content_screen.dart';
+import 'practical_task_screen.dart';
 
 class TestsScreen extends StatefulWidget {
   final List<TestModel> tests;
@@ -100,6 +102,31 @@ class _TestsScreenState extends State<TestsScreen> {
   }
 
   void _goToNextItem() {
+    // 1. Проверяем, есть ли практические задания в текущем подмодуле
+    if (widget.allSubmodules != null && widget.currentIndex >= 0 && widget.currentIndex < widget.allSubmodules!.length) {
+      final currentSubmoduleId = widget.allSubmodules![widget.currentIndex]['id'] as int;
+      final tasks = widget.practicalTasks?[currentSubmoduleId];
+      
+      if (tasks != null && tasks.isNotEmpty) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PracticalTaskScreen(
+              task: tasks[0],
+              courseId: widget.courseId,
+              courseName: widget.courseName,
+              allSubmodules: widget.allSubmodules,
+              currentIndex: widget.currentIndex,
+              submoduleTests: widget.submoduleTests,
+              practicalTasks: widget.practicalTasks,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
+    // 2. Если практик нет, переходим к следующему подмодулю
     if (widget.allSubmodules != null && widget.currentIndex >= 0 && widget.currentIndex + 1 < widget.allSubmodules!.length) {
       final next = widget.allSubmodules![widget.currentIndex + 1];
       final nextContentUrl = next['content'] as String?;
@@ -151,7 +178,9 @@ class _TestsScreenState extends State<TestsScreen> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.of(context).popUntil((route) => route.settings.name == 'course_profile');
+          },
         ),
       ),
       backgroundColor: context.bgColor,
@@ -383,48 +412,54 @@ class _TestsScreenState extends State<TestsScreen> {
     final isDark = context.isDark;
     final isEnabled = _isAnswered || _selectedAnswer != null;
 
-    return GestureDetector(
-      onTap: isEnabled ? (_isAnswered ? _nextTest : _submitAnswer) : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: double.infinity,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: isEnabled
-              ? LinearGradient(
-                  colors: isDark
-                      ? [_primaryPurple.withValues(alpha: 0.25), _accentPink.withValues(alpha: 0.15)]
-                      : [_primaryPurple, _accentPink],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isEnabled ? null : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
-          borderRadius: BorderRadius.circular(16),
-          border: isEnabled && isDark
-              ? Border.all(color: Colors.white.withValues(alpha: 0.1))
-              : null,
-          boxShadow: isEnabled && !isDark
-              ? [
-                  BoxShadow(
-                    color: _primaryPurple.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  )
-                ]
-              : [],
-        ),
-        child: Center(
-          child: Text(
-            _isAnswered
-                ? (_currentTestIndex < widget.tests.length - 1 ? 'Дальше' : 'Результаты')
-                : 'Проверить ответ',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isEnabled 
-                  ? Colors.white 
-                  : (isDark ? Colors.white24 : Colors.black26),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: isEnabled ? 10 : 0, sigmaY: isEnabled ? 10 : 0),
+        child: GestureDetector(
+          onTap: isEnabled ? (_isAnswered ? _nextTest : _submitAnswer) : null,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: isEnabled
+                  ? LinearGradient(
+                      colors: isDark
+                          ? [_primaryPurple.withValues(alpha: 0.25), _accentPink.withValues(alpha: 0.15)]
+                          : [_primaryPurple, _accentPink],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: isEnabled ? null : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+              borderRadius: BorderRadius.circular(16),
+              border: isEnabled && isDark
+                  ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                  : null,
+              boxShadow: isEnabled && !isDark
+                  ? [
+                      BoxShadow(
+                        color: _primaryPurple.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      )
+                    ]
+                  : [],
+            ),
+            child: Center(
+              child: Text(
+                _isAnswered
+                    ? (_currentTestIndex < widget.tests.length - 1 ? 'Дальше' : 'Результаты')
+                    : 'Проверить ответ',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isEnabled 
+                      ? Colors.white 
+                      : (isDark ? Colors.white24 : Colors.black26),
+                ),
+              ),
             ),
           ),
         ),
@@ -499,17 +534,47 @@ class _TestsScreenState extends State<TestsScreen> {
                   ),
                   
                   const SizedBox(height: 64),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _primaryPurple,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: GestureDetector(
+                        onTap: _goToNextItem,
+                        child: Container(
+                          width: double.infinity,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              colors: [
+                                _primaryPurple.withValues(alpha: 0.18),
+                                _accentPink.withValues(alpha: 0.12),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Продолжить обучение',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                shadows: [
+                                  Shadow(
+                                    color: Color(0x80000000),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      onPressed: _goToNextItem,
-                      child: const Text('Продолжить обучение', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ],

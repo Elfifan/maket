@@ -62,7 +62,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// Оставшаяся часть кода без изменений...
 class InitialScreen extends StatefulWidget {
   const InitialScreen({super.key});
   @override

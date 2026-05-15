@@ -469,184 +469,172 @@ for (final module in _courseStructure) {
               module['name'] ?? 'Без названия',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            subtitle: Text("${submodules.length} уроков", style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
             children: submodules.expand((sub) {
               final List<Widget> items = [];
 
-              // Добавляем подмодуль
               final int? submoduleId = sub['id'] is int ? sub['id'] as int : int.tryParse(sub['id'].toString());
-              final bool isSubmoduleCompleted = submoduleId != null && _completedSubmodules.contains(submoduleId);
+              if (submoduleId == null) return items;
+
+              final allSubmodules = _flattenSubmodules();
+              final currentIndexInAll = allSubmodules.indexWhere((item) => item['id'] == submoduleId);
               
+              // Проверка на последовательность: предыдущий подмодуль должен быть полностью завершен
+              bool isSubmoduleLocked = false;
+              if (currentIndexInAll > 0) {
+                final prevSubmoduleId = allSubmodules[currentIndexInAll - 1]['id'] as int?;
+                if (prevSubmoduleId != null && !_isSubmoduleFullyCompleted(prevSubmoduleId)) {
+                  isSubmoduleLocked = true;
+                }
+              }
+
+              // Контент
+              final bool isContentCompleted = _completedSubmodules.contains(submoduleId);
+              final String? contentUrl = sub['content'];
+
               items.add(ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
                 leading: Icon(
-                  isSubmoduleCompleted ? Icons.check_circle : Icons.play_circle_outline, 
-                  color: isSubmoduleCompleted ? Colors.green : (_isEnrolled ? const Color(0xFFA58EFF) : Colors.grey), 
+                  isContentCompleted ? Icons.check_circle : (isSubmoduleLocked ? Icons.lock_outline : Icons.play_circle_outline), 
+                  color: isContentCompleted ? Colors.green : (isSubmoduleLocked ? Colors.grey : (_isEnrolled ? const Color(0xFFA58EFF) : Colors.grey)), 
                   size: 20
                 ),
                 title: Text(
                   sub['name'] ?? 'Без названия',
                   style: TextStyle(
-                    color: _isEnrolled ? context.textPrimary : _textGrey, 
+                    color: isSubmoduleLocked ? Colors.grey : (_isEnrolled ? context.textPrimary : _textGrey), 
                   ),
                 ),
                 trailing: Icon(
-                  _isEnrolled ? Icons.arrow_forward_ios_rounded : Icons.lock_outline, 
+                  isSubmoduleLocked ? Icons.lock_outline : (_isEnrolled ? Icons.arrow_forward_ios_rounded : Icons.lock_outline), 
                   size: 16, 
                   color: Colors.grey
                 ), 
                 onTap: () {
-                  if (_isEnrolled) {
-                    final String? contentUrl = sub['content'];
-                    final int? submoduleId = sub['id'] is int ? sub['id'] as int : int.tryParse(sub['id'].toString());
-                    
-                    if (contentUrl != null && contentUrl.isNotEmpty && submoduleId != null) {
-                      final allSubmodules = _flattenSubmodules();
-                      final currentIndex = allSubmodules.indexWhere((item) => item['id'] == submoduleId);
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SubmoduleContentScreen(
-                            title: sub['name'] ?? 'Урок',
-                            contentUrl: contentUrl,
-                            submoduleId: submoduleId,
-                            courseId: widget.course.id,
-                            courseName: widget.course.name,
-                            allSubmodules: allSubmodules,
-                            currentIndex: currentIndex,
-                            submoduleTests: _submoduleTests,
-                            practicalTasks: _practicalTasks,
-                          ),
+                  if (!_isEnrolled) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Сначала купите курс'), backgroundColor: Colors.orange));
+                    return;
+                  }
+                  if (isSubmoduleLocked) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Сначала пройдите предыдущие уроки'), backgroundColor: Colors.red));
+                    return;
+                  }
+                  if (contentUrl != null && contentUrl.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SubmoduleContentScreen(
+                          title: sub['name'] ?? 'Урок',
+                          contentUrl: contentUrl,
+                          submoduleId: submoduleId,
+                          courseId: widget.course.id,
+                          courseName: widget.course.name,
+                          allSubmodules: allSubmodules,
+                          currentIndex: currentIndexInAll,
+                          submoduleTests: _submoduleTests,
+                          practicalTasks: _practicalTasks,
                         ),
-                      );
-                    } else if (contentUrl != null && contentUrl.isNotEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Не удалось определить ID подмодуля для тестов')),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Контент для этого урока еще не загружен')),
-                      );
-                    }
-                  } else {
-                    // Сообщение, если пользователь пытается открыть закрытый курс
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Сначала необходимо купить курс'),
-                        backgroundColor: Colors.orange,
                       ),
                     );
                   }
                 },
               ));
 
-              // Добавляем тесты для этого подмодуля, если они есть
-              final tests = submoduleId != null ? _submoduleTests[submoduleId] : null;
+              // Тесты
+              final tests = _submoduleTests[submoduleId];
               if (tests != null && tests.isNotEmpty) {
-                final bool isTestCompleted = submoduleId != null && _completedTestSubmodules.contains(submoduleId);
-                
+                final bool isTestCompleted = _completedTestSubmodules.contains(submoduleId);
+                final bool isTestLocked = isSubmoduleLocked || !isContentCompleted;
+
                 items.add(ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
                   leading: Icon(
-                    isTestCompleted ? Icons.check_circle : Icons.quiz, 
-                    color: isTestCompleted ? Colors.green : (_isEnrolled ? const Color(0xFFA58EFF) : Colors.grey), 
+                    isTestCompleted ? Icons.check_circle : (isTestLocked ? Icons.lock_outline : Icons.quiz), 
+                    color: isTestCompleted ? Colors.green : (isTestLocked ? Colors.grey : const Color(0xFFA58EFF)), 
                     size: 20
                   ),
                   title: Text(
                     'Тесты (${tests.length})',
                     style: TextStyle(
-                      color: _isEnrolled ? context.textPrimary : _textGrey, 
+                      color: isTestLocked ? Colors.grey : context.textPrimary, 
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   trailing: Icon(
-                    _isEnrolled ? Icons.arrow_forward_ios_rounded : Icons.lock_outline, 
+                    isTestLocked ? Icons.lock_outline : Icons.arrow_forward_ios_rounded, 
                     size: 16, 
                     color: Colors.grey
                   ), 
                   onTap: () {
-                    if (_isEnrolled) {
-                      final currentIndex = allSubmodules.indexWhere((item) => item['id'] == submoduleId);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TestsScreen(
-                            tests: tests,
-                            submoduleName: sub['name'] ?? 'Подмодуль',
-                            courseId: widget.course.id,
-                            courseName: widget.course.name,
-                            allSubmodules: allSubmodules,
-                            currentIndex: currentIndex,
-                            submoduleTests: _submoduleTests,
-                            practicalTasks: _practicalTasks,
-                          ),
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Сначала необходимо купить курс'),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
+                    if (isTestLocked) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Сначала изучите материал урока')));
+                      return;
                     }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TestsScreen(
+                          tests: tests,
+                          submoduleName: sub['name'] ?? 'Подмодуль',
+                          courseId: widget.course.id,
+                          courseName: widget.course.name,
+                          allSubmodules: allSubmodules,
+                          currentIndex: currentIndexInAll,
+                          submoduleTests: _submoduleTests,
+                          practicalTasks: _practicalTasks,
+                        ),
+                      ),
+                    );
                   },
                 ));
               }
-              // Добавляем практические задания для этого подмодуля
-final practicalTasks = submoduleId != null ? _practicalTasks[submoduleId] : null;
-if (practicalTasks != null && practicalTasks.isNotEmpty) {
-  final bool isTaskCompleted = submoduleId != null && _completedPracticalTasks.contains(submoduleId);
-  
-  items.add(ListTile(
-    contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
-    leading: Icon(
-      isTaskCompleted ? Icons.check_circle : Icons.code,
-      color: isTaskCompleted ? Colors.green : (_isEnrolled ? const Color(0xFFA58EFF) : Colors.grey),
-      size: 20,
-    ),
-    title: Text(
-      'Практика (${practicalTasks.length})',
-      style: TextStyle(
-        color: _isEnrolled ? context.textPrimary : _textGrey,
-        fontWeight: FontWeight.w500,
-      ),
-    ),
-    trailing: Icon(
-      _isEnrolled ? Icons.arrow_forward_ios_rounded : Icons.lock_outline,
-      size: 16,
-      color: Colors.grey,
-    ),
-    onTap: () {
-      if (_isEnrolled) {
-        final currentIndex = allSubmodules.indexWhere((item) => item['id'] == submoduleId);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PracticalTaskScreen(
-              task: practicalTasks[0],
-              courseId: widget.course.id,
-              courseName: widget.course.name,
-              allSubmodules: allSubmodules,
-              currentIndex: currentIndex,
-              practicalTasks: _practicalTasks,
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Сначала необходимо купить курс'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    },
-  ));
-}
 
+              // Практика
+              final practicalTasks = _practicalTasks[submoduleId];
+              if (practicalTasks != null && practicalTasks.isNotEmpty) {
+                final bool isTaskCompleted = _completedPracticalTasks.contains(submoduleId);
+                final bool hasTests = tests != null && tests.isNotEmpty;
+                final bool isPracticeLocked = isSubmoduleLocked || !isContentCompleted || (hasTests && !_completedTestSubmodules.contains(submoduleId));
 
+                items.add(ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 4),
+                  leading: Icon(
+                    isTaskCompleted ? Icons.check_circle : (isPracticeLocked ? Icons.lock_outline : Icons.code),
+                    color: isTaskCompleted ? Colors.green : (isPracticeLocked ? Colors.grey : const Color(0xFFA58EFF)),
+                    size: 20,
+                  ),
+                  title: Text(
+                    'Практика (${practicalTasks.length})',
+                    style: TextStyle(
+                      color: isPracticeLocked ? Colors.grey : context.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  trailing: Icon(
+                    isPracticeLocked ? Icons.lock_outline : Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
+                  onTap: () {
+                    if (isPracticeLocked) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Завершите изучение теории и тесты')));
+                      return;
+                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PracticalTaskScreen(
+                          task: practicalTasks[0],
+                          courseId: widget.course.id,
+                          courseName: widget.course.name,
+                          allSubmodules: allSubmodules,
+                          currentIndex: currentIndexInAll,
+                          practicalTasks: _practicalTasks,
+                        ),
+                      ),
+                    );
+                  },
+                ));
+              }
 
               return items;
             }).toList(),
@@ -655,6 +643,26 @@ if (practicalTasks != null && practicalTasks.isNotEmpty) {
       );
     },
   );
+}
+
+bool _isSubmoduleFullyCompleted(int submoduleId) {
+  // 1. Проверяем просмотр контента
+  bool contentCompleted = _completedSubmodules.contains(submoduleId);
+  if (!contentCompleted) return false;
+  
+  // 2. Проверяем тесты (если они есть)
+  final tests = _submoduleTests[submoduleId];
+  if (tests != null && tests.isNotEmpty) {
+    if (!_completedTestSubmodules.contains(submoduleId)) return false;
+  }
+  
+  // 3. Проверяем практические задания (если они есть)
+  final tasks = _practicalTasks[submoduleId];
+  if (tasks != null && tasks.isNotEmpty) {
+    if (!_completedPracticalTasks.contains(submoduleId)) return false;
+  }
+  
+  return true;
 }
 
   List<Map<String, dynamic>> _flattenSubmodules() {
@@ -683,7 +691,7 @@ Widget _buildActionButton() {
     return _buttonTemplate(
       text: 'Продолжить обучение',
       onPressed: _continueLearning,
-      isAccent: false,
+      isAccent: true,
     );
   }
 
@@ -691,7 +699,7 @@ Widget _buildActionButton() {
   return _buttonTemplate(
     text: _isPurchasing ? 'Оформление...' : 'Записаться за ${widget.course.price?.toInt() ?? 0} ₽',
     onPressed: _isPurchasing ? null : _handlePurchase,
-    isAccent: false, // Используем стиль "Продолжить обучение"
+    isAccent: true,
   );
 }
 

@@ -491,8 +491,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Switch.adaptive(
                 value: themeProvider.isDarkMode,
                 onChanged: (_) => themeProvider.toggleTheme(),
-                activeTrackColor: _primaryPurple,
-                thumbColor: WidgetStateProperty.all(Colors.white),
+                activeColor: _primaryPurple,
+                activeTrackColor: _primaryPurple.withValues(alpha: 0.3),
+                inactiveThumbColor: Colors.white,
+                inactiveTrackColor: context.isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.1),
+                trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
               ),
             ],
           ),

@@ -35,7 +35,6 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Декоративные градиентные сферы для глассморфизм-эффекта
           if (isDark) ...[
             Positioned(
               top: -100,

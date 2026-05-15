@@ -165,7 +165,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
             Text(
               widget.courseName,
               style: GoogleFonts.roboto(
-                color: Colors.white,
+                color: context.textPrimary,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -210,7 +210,7 @@ class _UserChatScreenState extends State<UserChatScreen> {
                             Text(
                               'Начните общение',
                               style: GoogleFonts.roboto(
-                                color: _textDark,
+                                color: context.textPrimary,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                               ),
