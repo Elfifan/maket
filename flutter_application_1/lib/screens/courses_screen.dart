@@ -19,6 +19,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   List<CourseModel> _displayCourses = [];
   List<CourseModel> _myCourses = [];
   bool _loading = false;
+  String? _errorMessage;
   String _activeFilter = 'Все';
 
   static const Color _primaryPurple = Color(0xFFA58EFF);
@@ -35,31 +36,60 @@ class _CoursesScreenState extends State<CoursesScreen> {
   }
 
   Future<void> _loadCourses() async {
-    setState(() => _loading = true);
-    await SupabaseService().initialize();
-    try {
-      if (!mounted) return;
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
-      final allCourses = await SupabaseService().getCourses();
-      
-      List<CourseModel> myCourses = [];
-      if (authProvider.currentUser != null) {
-        myCourses = await SupabaseService().getUserCourses(
-          userId: authProvider.currentUser!.id!,
-        );
-      }
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
 
-      setState(() {
-        _allCourses.clear();
-        _allCourses.addAll(allCourses);
-        _myCourses = myCourses;
-        _applyFilter(_activeFilter);
-      });
-    } catch (e) {
-      debugPrint('Ошибка: $e');
-    } finally {
-      if (context.mounted) setState(() => _loading = false);
+    int attempts = 0;
+    const int maxAttempts = 3;
+    const Duration timeoutDuration = Duration(seconds: 2);
+
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        debugPrint('Загрузка курсов, попытка $attempts из $maxAttempts...');
+        
+        await SupabaseService().initialize();
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        
+        // Параллельный запуск запросов с таймаутом
+        final results = await Future.wait([
+          SupabaseService().getCourses().timeout(timeoutDuration),
+          if (authProvider.currentUser != null)
+            SupabaseService().getUserCourses(userId: authProvider.currentUser!.id!).timeout(timeoutDuration)
+          else
+            Future.value(<CourseModel>[]),
+        ]);
+
+        final allCourses = results[0] as List<CourseModel>;
+        final myCourses = results[1] as List<CourseModel>;
+
+        if (mounted) {
+          setState(() {
+            _allCourses.clear();
+            _allCourses.addAll(allCourses);
+            _myCourses = myCourses;
+            _applyFilter(_activeFilter);
+            _loading = false;
+          });
+        }
+        return; // Успешно загружено, выходим из метода
+      } catch (e) {
+        debugPrint('Попытка $attempts не удалась: $e');
+        if (attempts >= maxAttempts) {
+          if (mounted) {
+            setState(() {
+              _errorMessage = 'Не удалось загрузить данные после $maxAttempts попыток. Проверьте интернет.';
+              _loading = false;
+            });
+          }
+        } else {
+          // Небольшая пауза перед следующей попыткой
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
     }
   }
 
@@ -85,8 +115,36 @@ class _CoursesScreenState extends State<CoursesScreen> {
       backgroundColor: context.bgColor,
       appBar: _buildAppBar(),
       body: _loading
-        ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
-        : RefreshIndicator(
+          ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
+          : _errorMessage != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.cloud_off_rounded, size: 64, color: context.textSecondary.withValues(alpha: 0.5)),
+                        const SizedBox(height: 16),
+                        Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: context.textPrimary, fontSize: 16),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: _loadCourses,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primaryPurple,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                          child: const Text('Попробовать снова', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : RefreshIndicator(
             onRefresh: _loadCourses,
             color: _primaryPurple,
             child: CustomScrollView(
@@ -429,15 +487,14 @@ Widget _buildCourseIcon(String? icon) {
 
   Widget _buildCourseCard(CourseModel course) {
     return GestureDetector(
-      onTap: () async {
-        await Navigator.push(
+      onTap: () {
+        Navigator.push(
           context,
           MaterialPageRoute(
             settings: const RouteSettings(name: 'course_profile'),
             builder: (_) => CourseProfileScreen(course: course),
           ),
         );
-        _loadCourses();
       },
       child: GlassContainer(
         padding: EdgeInsets.zero,
