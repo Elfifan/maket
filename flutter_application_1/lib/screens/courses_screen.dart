@@ -44,21 +44,23 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
     int attempts = 0;
     const int maxAttempts = 3;
-    const Duration timeoutDuration = Duration(seconds: 2);
+    const Duration timeoutDuration = Duration(seconds: 1);
 
     while (attempts < maxAttempts) {
       try {
         attempts++;
         debugPrint('Загрузка курсов, попытка $attempts из $maxAttempts...');
-        
+
         await SupabaseService().initialize();
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        
+
         // Параллельный запуск запросов с таймаутом
         final results = await Future.wait([
           SupabaseService().getCourses().timeout(timeoutDuration),
           if (authProvider.currentUser != null)
-            SupabaseService().getUserCourses(userId: authProvider.currentUser!.id!).timeout(timeoutDuration)
+            SupabaseService()
+                .getUserCourses(userId: authProvider.currentUser!.id!)
+                .timeout(timeoutDuration)
           else
             Future.value(<CourseModel>[]),
         ]);
@@ -81,7 +83,8 @@ class _CoursesScreenState extends State<CoursesScreen> {
         if (attempts >= maxAttempts) {
           if (mounted) {
             setState(() {
-              _errorMessage = 'Не удалось загрузить данные после $maxAttempts попыток. Проверьте интернет.';
+              _errorMessage =
+                  'Не удалось загрузить данные после $maxAttempts попыток. Проверьте интернет.';
               _loading = false;
             });
           }
@@ -107,48 +110,68 @@ class _CoursesScreenState extends State<CoursesScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final userName = authProvider.currentUser?.name ?? 
-                     authProvider.currentUser?.email?.split('@')[0] ?? 
-                     'Пользователь';
+    final userName =
+        authProvider.currentUser?.name ??
+        authProvider.currentUser?.email?.split('@')[0] ??
+        'Пользователь';
 
     return Scaffold(
       backgroundColor: context.bgColor,
       appBar: _buildAppBar(),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _primaryPurple))
+          ? const Center(
+              child: CircularProgressIndicator(color: _primaryPurple),
+            )
           : _errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.cloud_off_rounded, size: 64, color: context.textSecondary.withValues(alpha: 0.5)),
-                        const SizedBox(height: 16),
-                        Text(
-                          _errorMessage!,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: context.textPrimary, fontSize: 16),
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: _loadCourses,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryPurple,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          ),
-                          child: const Text('Попробовать снова', style: TextStyle(color: Colors.white)),
-                        ),
-                      ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.cloud_off_rounded,
+                      size: 64,
+                      color: context.textSecondary.withValues(alpha: 0.5),
                     ),
-                  ),
-                )
-              : RefreshIndicator(
-            onRefresh: _loadCourses,
-            color: _primaryPurple,
-            child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                    const SizedBox(height: 16),
+                    Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: context.textPrimary,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: _loadCourses,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryPurple,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Text(
+                        'Попробовать снова',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _loadCourses,
+              color: _primaryPurple,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
                 slivers: [
                   SliverToBoxAdapter(
                     child: Padding(
@@ -192,7 +215,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                       ),
                     ),
                   ),
-                  
+
                   SliverToBoxAdapter(
                     child: SizedBox(
                       height: 45,
@@ -207,14 +230,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
                       ),
                     ),
                   ),
-    
+
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
                       child: Row(
                         children: [
                           Text(
-                            _activeFilter == 'Мои курсы' ? 'Мои курсы' : 'Новые курсы',
+                            _activeFilter == 'Мои курсы'
+                                ? 'Мои курсы'
+                                : 'Новые курсы',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -223,7 +248,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
                           ),
                           const SizedBox(width: 12),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: context.surfaceColor,
                               borderRadius: BorderRadius.circular(8),
@@ -241,7 +269,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                       ),
                     ),
                   ),
-    
+
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     sliver: _displayCourses.isEmpty
@@ -260,14 +288,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
                             ),
                           )
                         : SliverGrid(
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 16,
-                              mainAxisSpacing: 16,
-                              childAspectRatio: 0.75,
-                            ),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                  childAspectRatio: 0.75,
+                                ),
                             delegate: SliverChildBuilderDelegate(
-                              (context, index) => _buildCourseCard(_displayCourses[index]),
+                              (context, index) =>
+                                  _buildCourseCard(_displayCourses[index]),
                               childCount: _displayCourses.length,
                             ),
                           ),
@@ -275,7 +305,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   const SliverToBoxAdapter(child: SizedBox(height: 100)),
                 ],
               ),
-          ),
+            ),
     );
   }
 
@@ -291,10 +321,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: context.isDark ? Colors.white.withValues(alpha: 0.1) : ThemeProvider.lightTextPrimary,
+              color: context.isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : ThemeProvider.lightTextPrimary,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(Icons.bolt, color: context.isDark ? _primaryPurple : Colors.white, size: 20),
+            child: Icon(
+              Icons.bolt,
+              color: context.isDark ? _primaryPurple : Colors.white,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 10),
           Text(
@@ -314,16 +350,29 @@ class _CoursesScreenState extends State<CoursesScreen> {
               decoration: BoxDecoration(
                 color: context.surfaceColor,
                 shape: BoxShape.circle,
-                border: Border.all(color: _primaryPurple.withValues(alpha: 0.3), width: 1),
+                border: Border.all(
+                  color: _primaryPurple.withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
               child: ClipOval(
-                child: authProvider.currentUser?.avatarUrl != null && authProvider.currentUser!.avatarUrl!.isNotEmpty
+                child:
+                    authProvider.currentUser?.avatarUrl != null &&
+                        authProvider.currentUser!.avatarUrl!.isNotEmpty
                     ? Image.network(
                         authProvider.currentUser!.avatarUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Icon(Icons.person, size: 20, color: context.textSecondary),
+                        errorBuilder: (_, _, _) => Icon(
+                          Icons.person,
+                          size: 20,
+                          color: context.textSecondary,
+                        ),
                       )
-                    : Icon(Icons.person, size: 20, color: context.textSecondary),
+                    : Icon(
+                        Icons.person,
+                        size: 20,
+                        color: context.textSecondary,
+                      ),
               ),
             ),
           ),
@@ -334,7 +383,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
   Widget _buildPathBanner() {
     String courseName = 'Начни уже изучать';
-    
+
     if (_myCourses.isNotEmpty) {
       courseName = _myCourses.first.name;
     }
@@ -349,7 +398,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-           Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -383,13 +432,17 @@ class _CoursesScreenState extends State<CoursesScreen> {
                       context,
                       MaterialPageRoute(
                         settings: const RouteSettings(name: 'course_profile'),
-                        builder: (_) => CourseProfileScreen(course: _myCourses.first),
+                        builder: (_) =>
+                            CourseProfileScreen(course: _myCourses.first),
                       ),
                     );
                   }
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(12),
@@ -404,7 +457,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   ),
                 ),
               ),
-
             ],
           ),
         ],
@@ -421,11 +473,15 @@ class _CoursesScreenState extends State<CoursesScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           color: isSelected
-              ? (context.isDark ? _primaryPurple.withValues(alpha: 0.25) : _primaryPurple)
+              ? (context.isDark
+                    ? _primaryPurple.withValues(alpha: 0.25)
+                    : _primaryPurple)
               : context.surfaceColor,
           borderRadius: BorderRadius.circular(16),
           border: isSelected
-              ? (context.isDark ? Border.all(color: Colors.white.withValues(alpha: 0.1)) : null)
+              ? (context.isDark
+                    ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                    : null)
               : Border.all(color: context.borderColor),
         ),
         child: Row(
@@ -449,41 +505,34 @@ class _CoursesScreenState extends State<CoursesScreen> {
     );
   }
 
-Widget _buildCourseIcon(String? icon) {
-  if (icon == null || icon.isEmpty) {
-    return Icon(
-      Icons.school,
-      color: _primaryPurple.withValues(alpha: 0.3),
-      size: 48,
-    );
-  }
+  Widget _buildCourseIcon(String? icon) {
+    if (icon == null || icon.isEmpty) {
+      return Icon(
+        Icons.school,
+        color: _primaryPurple.withValues(alpha: 0.3),
+        size: 48,
+      );
+    }
 
-  if (icon.startsWith('http')) {
-    return Image.network(
-      icon,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Text(
-        '📚',
-        style: TextStyle(fontSize: 48),
-      ),
-    );
-  }
-
-  return Container(
-    width: 70,
-    height: 70,
-    decoration: BoxDecoration(
-      color: _primaryPurple.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Center(
-      child: Text(
+    if (icon.startsWith('http')) {
+      return Image.network(
         icon,
-        style: const TextStyle(fontSize: 36),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) =>
+            Text('📚', style: TextStyle(fontSize: 48)),
+      );
+    }
+
+    return Container(
+      width: 70,
+      height: 70,
+      decoration: BoxDecoration(
+        color: _primaryPurple.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
       ),
-    ),
-  );
-}
+      child: Center(child: Text(icon, style: const TextStyle(fontSize: 36))),
+    );
+  }
 
   Widget _buildCourseCard(CourseModel course) {
     return GestureDetector(
@@ -507,11 +556,11 @@ Widget _buildCourseIcon(String? icon) {
                   color: context.isDark
                       ? _primaryPurple.withValues(alpha: 0.08)
                       : context.surfaceColor,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
                 ),
-                child: Center(
-                  child: _buildCourseIcon(course.icon),
-                ),
+                child: Center(child: _buildCourseIcon(course.icon)),
               ),
             ),
             Padding(
