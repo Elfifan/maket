@@ -44,6 +44,11 @@ class AuthProvider with ChangeNotifier {
         email: email,
         password: password,
       );
+      
+      if (_currentUser != null) {
+        await _supabaseService.awardAchievement(_currentUser!.id!, 9);
+      }
+      
       _isLoading = false;
       notifyListeners();
       return null;

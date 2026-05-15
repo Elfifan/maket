@@ -14,7 +14,6 @@ class CustomBottomNav extends StatelessWidget {
   });
 
   static const Color _primaryPurple = Color(0xFFA58EFF);
-  static const Color _accentPink = Color(0xFFF2C9D4);
 
   @override
   Widget build(BuildContext context) {

@@ -52,6 +52,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
         debugPrint('Загрузка курсов, попытка $attempts из $maxAttempts...');
 
         await SupabaseService().initialize();
+        if (!mounted) return;
         final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
         // Параллельный запуск запросов с таймаутом
@@ -65,8 +66,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
             Future.value(<CourseModel>[]),
         ]);
 
-        final allCourses = results[0] as List<CourseModel>;
-        final myCourses = results[1] as List<CourseModel>;
+        if (!mounted) return;
+
+        final allCourses = results[0];
+        final myCourses = results[1];
 
         if (mounted) {
           setState(() {

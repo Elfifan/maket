@@ -271,8 +271,9 @@ class _PracticalTaskScreenState extends State<PracticalTaskScreen> {
   }
 
   Widget _buildTaskDescription(bool isDark) {
-    if (widget.task.content == null || widget.task.content!.isEmpty)
+    if (widget.task.content == null || widget.task.content!.isEmpty) {
       return const SizedBox.shrink();
+    }
 
     return GlassContainer(
       width: double.infinity,

@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../models/certificate_model.dart';
 import '../models/user_model.dart';
 import '../models/course_model.dart';
+import 'supabase_service.dart';
 
 class CertificateService {
   static final CertificateService _instance = CertificateService._internal();
@@ -47,6 +48,9 @@ class CertificateService {
         certificateUrl: certificateUrl,
       );
 
+      // Выдаем достижение ID 8 за завершение любого курса
+      await SupabaseService().awardAchievement(user.id!, 8);
+
       return certificate;
     } catch (e) {
       debugPrint('Error generating certificate: $e');
@@ -54,8 +58,26 @@ class CertificateService {
     }
   }
 
+  Future<T?> _withRetry<T>(Future<T?> Function() action, String label) async {
+    int attempts = 0;
+    const int maxAttempts = 3;
+    const Duration timeout = Duration(seconds: 1);
+
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        return await action().timeout(timeout);
+      } catch (e) {
+        debugPrint('[$label] Попытка $attempts не удалась: $e');
+        if (attempts >= maxAttempts) return null;
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>?> _findCertificateRow(int userId, int courseId) async {
-    try {
+    return _withRetry(() async {
       final response = await _supabase
           .from('certificates')
           .select('*, courses(name)')
@@ -69,10 +91,7 @@ class CertificateService {
       }
 
       return Map<String, dynamic>.from(response.first as Map<String, dynamic>);
-    } catch (e) {
-      debugPrint('Error finding certificate row: $e');
-      return null;
-    }
+    }, 'Find Certificate');
   }
 
   Future<CertificateModel?> getCertificate(int userId, int courseId) async {
@@ -256,7 +275,7 @@ class CertificateService {
   }
 
   Future<String?> _uploadPdfToStorage(Uint8List pdfBytes, String fileName) async {
-    try {
+    return _withRetry(() async {
       final bucket = _supabase.storage.from('certificates');
 
       // Загружаем файл
@@ -272,13 +291,7 @@ class CertificateService {
       // Получаем публичный URL
       final publicUrl = bucket.getPublicUrl(fileName);
       return publicUrl;
-    } catch (e) {
-      debugPrint('Error uploading PDF: $e');
-      if (e.toString().contains('Bucket not found')) {
-        debugPrint('Please create a bucket named "certificates" in Supabase Storage with public access.');
-      }
-      return null;
-    }
+    }, 'Upload PDF');
   }
 
   Future<CertificateModel?> _createCertificateRecord({
@@ -286,7 +299,7 @@ class CertificateService {
     required int courseId,
     required String certificateUrl,
   }) async {
-    try {
+    return _withRetry(() async {
       final verificationCode = _uuid.v4().substring(0, 8).toUpperCase();
 
       final response = await _supabase
@@ -301,10 +314,7 @@ class CertificateService {
           .single();
 
       return CertificateModel.fromJson(response);
-    } catch (e) {
-      debugPrint('Error creating certificate record: $e');
-      return null;
-    }
+    }, 'Create Certificate Record');
   }
 
   Future<bool> hasCertificate(int userId, int courseId) async {

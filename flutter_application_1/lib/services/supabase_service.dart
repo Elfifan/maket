@@ -158,8 +158,7 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
     }
   }
 
-
-Future<List<CourseModel>> getCourses({String? search, String? category}) async {
+  Future<List<CourseModel>> getCourses({String? search, String? category}) async {
   try {
     var query = _client
         .from('courses')
@@ -178,11 +177,11 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
 
     final List<dynamic> data = response as List<dynamic>;
     return data.map((json) => CourseModel.fromJson(json)).toList();
-  } catch (e) {
-    debugPrint('Error fetching courses: $e');
-    return [];
+    } catch (e) {
+      debugPrint('Error fetching courses: $e');
+      return [];
+    }
   }
-}
 
   /// Список курсов, приобретённых пользователем.
   Future<List<CourseModel>> getUserCourses({
@@ -280,64 +279,116 @@ Future<List<CourseModel>> getCourses({String? search, String? category}) async {
     }
   }
 
-Future<bool> purchaseCourse(int userId, CourseModel course, String userEmail) async {
-  try {
-    await _client.from('user_courses').insert({
-      'id_user': userId,
-      'id_courses': course.id,
-      'purchase_price': course.price ?? 0.0, 
-      'purchase_date': DateTime.now().toIso8601String(),
-    });
-    
-    await sendEmailReceipt(
-      toEmail: userEmail,
-      courseName: course.name,
-      amount: course.price ?? 0.0,
-    );
-    return true;
-  } catch (e) {
-    debugPrint('Ошибка при записи в БД: $e');
-    return false;
+  /// Выдать достижение пользователю
+  Future<void> awardAchievement(int userId, int achievementId) async {
+    await initialize();
+    try {
+      // Проверяем, есть ли уже такое достижение у пользователя
+      final existing = await _client
+          .from('achievements_user')
+          .select('id')
+          .eq('id_user', userId)
+          .eq('id_achievement', achievementId)
+          .maybeSingle();
+
+      if (existing == null) {
+        await _client.from('achievements_user').insert({
+          'id_user': userId,
+          'id_achievement': achievementId,
+          'date_achieved': DateTime.now().toIso8601String(),
+        });
+        debugPrint('Achievement $achievementId awarded to user $userId');
+      }
+    } catch (e) {
+      debugPrint('Error awarding achievement: $e');
+    }
   }
-}
 
+  Future<bool> purchaseCourse(int userId, CourseModel course, String userEmail) async {
+    try {
+      // Проверяем, первая ли это покупка
+      final existingPurchases = await _client
+          .from('user_courses')
+          .select('id')
+          .eq('id_user', userId)
+          .limit(1);
+      
+      final isFirstPurchase = (existingPurchases as List).isEmpty;
 
-Future<List<AchievementModel>> getUserAchievements(int userId) async {
-  try {
+      await _client.from('user_courses').insert({
+        'id_user': userId,
+        'id_courses': course.id,
+        'purchase_price': course.price ?? 0.0, 
+        'purchase_date': DateTime.now().toIso8601String(),
+      });
+      
+      // Если покупка первая и платная, выдаем достижение ID 7
+      if (isFirstPurchase && (course.price ?? 0) > 0) {
+        await awardAchievement(userId, 7);
+      }
 
-    final response = await _client
-        .from('achievements_user')
-        .select('achievement (*)')
-        .eq('id_user', userId);
+      await sendEmailReceipt(
+        toEmail: userEmail,
+        courseName: course.name,
+        amount: course.price ?? 0.0,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Ошибка при записи в БД: $e');
+      return false;
+    }
+  }
 
-    final List<dynamic> data = response as List<dynamic>;
-    
-    return data
+  Future<T?> _withRetry<T>(Future<T?> Function() action, String label) async {
+    int attempts = 0;
+    const int maxAttempts = 3;
+    const Duration timeout = Duration(seconds: 1);
+
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        return await action().timeout(timeout);
+      } catch (e) {
+        debugPrint('[$label] Попытка $attempts не удалась: $e');
+        if (attempts >= maxAttempts) return null;
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+    }
+    return null;
+  }
+
+  Future<List<AchievementModel>> getUserAchievements(int userId) async {
+    final data = await _withRetry(() async {
+      return await _client
+          .from('achievements_user')
+          .select('achievement (*)')
+          .eq('id_user', userId);
+    }, 'Fetch Achievements');
+
+    if (data == null) return [];
+
+    final List<dynamic> listData = data as List<dynamic>;
+    return listData
         .where((item) => item['achievement'] != null)
         .map((item) => AchievementModel.fromJson(item['achievement']))
         .toList();
-  } catch (e) {
-    debugPrint('Error fetching user achievements: $e');
-    return [];
   }
-}
 
-
-/// Обновить имя пользователя
-Future<bool> updateUserName(int userId, String newName) async {
-  try {
-    await _client
-        .from('users')
-        .update({'name': newName})
-        .eq('id', userId);
-    return true;
-  } catch (e) {
-    debugPrint('Error updating user name: $e');
-    return false;
+  /// Обновить имя пользователя
+  Future<bool> updateUserName(int userId, String newName) async {
+    try {
+      await _client
+          .from('users')
+          .update({'name': newName})
+          .eq('id', userId);
+      return true;
+    } catch (e) {
+      debugPrint('Error updating user name: $e');
+      return false;
+    }
   }
-}
 
-/// Загрузить аватар в Storage
+  /// Загрузить аватар в Storage
   Future<String?> uploadAvatar(int userId, Uint8List imageBytes, String extension) async {
     try {
       final fileName = 'avatar_${userId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
@@ -359,7 +410,7 @@ Future<bool> updateUserName(int userId, String newName) async {
     }
   }
 
-/// Сохранить URL аватара в профиле
+  /// Сохранить URL аватара в профиле
   Future<bool> updateUserAvatar(int userId, String avatarUrl) async {
     try {
       final response = await _client
@@ -380,26 +431,21 @@ Future<bool> updateUserName(int userId, String newName) async {
     }
   }
 
-Future<List<CertificateModel>> getUserCertificates(int userId) async {
-  try {
-    final response = await _client
-        .from('certificates')
-        .select('*, courses(name)')
-        .eq('id_user', userId);
+  Future<List<CertificateModel>> getUserCertificates(int userId) async {
+    final data = await _withRetry(() async {
+      return await _client
+          .from('certificates')
+          .select('*, courses(name)')
+          .eq('id_user', userId);
+    }, 'Fetch Certificates');
 
-    final List<dynamic> data = response as List<dynamic>;
+    if (data == null) return [];
 
-    return data.map((item) => CertificateModel.fromJson(item)).toList();
-  } catch (e) {
-    debugPrint('Error fetching user certificates: $e');
-    return [];
+    final List<dynamic> listData = data as List<dynamic>;
+    return listData.map((item) => CertificateModel.fromJson(item)).toList();
   }
-}
 
-
-
-
-Future<bool> sendEmailReceipt({
+  Future<bool> sendEmailReceipt({
     required String toEmail,
     required String courseName,
     required double amount,
@@ -550,7 +596,6 @@ Future<bool> sendEmailReceipt({
       }
     } catch (e) {
       debugPrint('Error saving submodule progress: $e');
-      return null;
     }
   }
 
@@ -568,7 +613,6 @@ Future<bool> sendEmailReceipt({
       debugPrint('Test result saved: user $userId, submodule $submoduleId, correct $numberCorrectAnswers/$numberTests');
     } catch (e) {
       debugPrint('Error saving test result: $e');
-      return null;
     }
   }
 
@@ -631,8 +675,8 @@ Future<List<PracticalTaskModel>> getPracticalTasks(int submoduleId) async {
   } catch (e) {
     debugPrint('Error getting practical tasks: $e');
     return [];
+    }
   }
-}
 
 /// Сохранить результат практического задания
 Future<void> savePracticalTaskResult(
@@ -675,11 +719,10 @@ Future<void> savePracticalTaskResult(
             'date_submitted': DateTime.now().toIso8601String(),
           });
     }
-  } catch (e) {
-    debugPrint('Error saving practical task result: $e');
-    return null;
+    } catch (e) {
+      debugPrint('Error saving practical task result: $e');
+    }
   }
-}
 
 /// Получить завершенные практические задания
 Future<Set<int>> getCompletedPracticalTasks(int userId) async {
@@ -693,12 +736,13 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
     return List<Map<String, dynamic>>.from(response)
         .map((row) => row['id_task'] as int)
         .toSet();
-  } catch (e) {
-    debugPrint('Error getting completed practical tasks: $e');
-    return {};
+    } catch (e) {
+      debugPrint('Error getting completed practical tasks: $e');
+      return {};
+    }
   }
-}
-SupabaseClient get client {
-  return _client;
-}
+
+  SupabaseClient get client {
+    return _client;
+  }
 }

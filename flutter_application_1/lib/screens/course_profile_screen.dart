@@ -15,7 +15,6 @@ import 'submodule_content_screen.dart';
 import 'tests_screen.dart';
 import 'user_chat_screen.dart';
 import 'practical_task_screen.dart';
-import '../widgets/glass_container.dart';
 import '../widgets/payment_dialog.dart';
 
 class CourseProfileScreen extends StatefulWidget {
@@ -41,7 +40,6 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
   int _selectedTabIndex = 0;
 
   // Константы дизайна
-  static const Color _textDark = Color(0xFF1E1E2E);
   static const Color _textGrey = Color(0xFF9094A6);
   static const Color _primaryPurple = Color(0xFFA58EFF);
 

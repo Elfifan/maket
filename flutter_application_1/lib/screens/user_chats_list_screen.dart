@@ -23,9 +23,7 @@ class _UserChatsListScreenState extends State<UserChatsListScreen> {
 
   static const Color _primaryPurple = Color(0xFFA58EFF);
   static const Color _accentPink = Color(0xFFF2C9D4);
-  static const Color _textDark = Color(0xFF1E1E2E);
   static const Color _textGrey = Color(0xFF9094A6);
-  static const Color _bgLight = Color(0xFFF8F9FB);
 
   @override
   void initState() {

@@ -94,9 +94,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
                   labelText: 'Номер карты',
-                  labelStyle: TextStyle(color: textColor.withOpacity(0.6)),
+                  labelStyle: TextStyle(color: textColor.withValues(alpha: 0.6)),
                   hintText: '0000 0000 0000 0000',
-                  hintStyle: TextStyle(color: textColor.withOpacity(0.3)),
+                  hintStyle: TextStyle(color: textColor.withValues(alpha: 0.3)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: borderColor),
@@ -109,7 +109,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Color(0xFFA58EFF)),
                   ),
-                  prefixIcon: Icon(Icons.credit_card, color: textColor.withOpacity(0.6)),
+                  prefixIcon: Icon(Icons.credit_card, color: textColor.withValues(alpha: 0.6)),
                 ),
                 keyboardType: TextInputType.number,
                 inputFormatters: [
@@ -130,9 +130,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
                       style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         labelText: 'Срок (ММ/ГГ)',
-                        labelStyle: TextStyle(color: textColor.withOpacity(0.6)),
+                        labelStyle: TextStyle(color: textColor.withValues(alpha: 0.6)),
                         hintText: '12/25',
-                        hintStyle: TextStyle(color: textColor.withOpacity(0.3)),
+                        hintStyle: TextStyle(color: textColor.withValues(alpha: 0.3)),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(color: borderColor),
@@ -166,9 +166,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
                       style: TextStyle(color: textColor),
                       decoration: InputDecoration(
                         labelText: 'CVV',
-                        labelStyle: TextStyle(color: textColor.withOpacity(0.6)),
+                        labelStyle: TextStyle(color: textColor.withValues(alpha: 0.6)),
                         hintText: '123',
-                        hintStyle: TextStyle(color: textColor.withOpacity(0.3)),
+                        hintStyle: TextStyle(color: textColor.withValues(alpha: 0.3)),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(color: borderColor),

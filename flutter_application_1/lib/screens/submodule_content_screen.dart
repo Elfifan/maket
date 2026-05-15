@@ -48,7 +48,6 @@ class SubmoduleContentScreen extends StatefulWidget {
 
 class _SubmoduleContentScreenState extends State<SubmoduleContentScreen> {
   static const Color _primaryPurple = Color(0xFFA58EFF);
-  static const Color _accentPink = Color(0xFFF2C9D4);
 
   String _markdownContent = "";
   bool _isLoading = true;
