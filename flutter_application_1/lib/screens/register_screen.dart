@@ -250,13 +250,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     style: TextStyle(color: context.textPrimary, fontSize: 15),
     decoration: _inputStyle('example@mail.ru', Icons.email_outlined),
     keyboardType: TextInputType.emailAddress,
-    validator: (v) {
-      if (v == null || v.isEmpty) return 'Введите email';
-      if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(v)) {
-        return 'Неверный формат email';
-      }
-      return null;
-    },
+    validator: (v) => (v == null || !v.contains('@')) ? 'Введите корректный email' : null,
   );
 
   Widget _buildPasswordField() => TextFormField(
@@ -267,12 +261,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       icon: Icon(_passwordVisible ? Icons.visibility : Icons.visibility_off, color: context.textSecondary, size: 22),
       onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
     )),
-    validator: (v) {
-      if (v == null || v.length < 6) return 'Минимум 6 символов';
-      if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Минимум 1 заглавная буква';
-      if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(v)) return 'Минимум 1 спец.символ';
-      return null;
-    },
+    validator: (v) => (v == null || v.length < 6) ? 'Минимум 6 символов' : null,
   );
 
   Widget _buildConfirmPasswordField() => TextFormField(

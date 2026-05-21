@@ -114,6 +114,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     _buildInputLabel('Пароль'),
                     _buildPasswordField(),
                     
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {},
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 30)),
+                        child: const Text(
+                          'Забыли пароль?',
+                          style: TextStyle(color: _primaryPurple, fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ),
+                    
                     if (_errorMessage != null) _buildErrorMessage(),
                     
                     const SizedBox(height: 12), 
