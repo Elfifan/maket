@@ -12,6 +12,7 @@ import '../services/supabase_service.dart';
 import '../widgets/glass_container.dart';
 import 'dart:ui' as ui;
 import 'submodule_content_screen.dart';
+import 'course_profile_screen.dart';
 
 class PracticalTaskScreen extends StatefulWidget {
   final PracticalTaskModel task;
@@ -128,9 +129,17 @@ class _PracticalTaskScreenState extends State<PracticalTaskScreen> {
         widget.task.submoduleId ?? 0,
         _codeController.text,
       );
+      CourseProfileScreen.progressNotifier.value = !CourseProfileScreen.progressNotifier.value;
     } catch (e) {
       debugPrint('Error saving practical task result: $e');
     }
+  }
+
+  bool get _hasNextItem {
+    if (widget.allSubmodules != null && widget.currentIndex >= 0 && widget.currentIndex + 1 < widget.allSubmodules!.length) {
+      return true;
+    }
+    return false;
   }
 
   void _goToNextItem() {
@@ -583,79 +592,69 @@ class _PracticalTaskScreenState extends State<PracticalTaskScreen> {
 
     return Padding(
       padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
-      child: GestureDetector(
-          onTap: isEnabled ? (_isCompleted ? _goToNextItem : _runTests) : null,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: isDark 
-              ? ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10) 
-              : ui.ImageFilter.blur(sigmaX: 0, sigmaY: 0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: double.infinity,
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: isEnabled
-                  ? LinearGradient(
-                      colors: isDark
-                          ? [_primaryPurple.withValues(alpha: 0.25), _accentPink.withValues(alpha: 0.15)]
-                          : [_primaryPurple, _accentPink],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: isEnabled ? null : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
-              borderRadius: BorderRadius.circular(16),
-              border: isEnabled && isDark
-                  ? Border.all(color: Colors.white.withValues(alpha: 0.1))
-                  : null,
-              boxShadow: isEnabled && !isDark
-                  ? [
-                      BoxShadow(
-                        color: _primaryPurple.withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ]
-                  : [],
-            ),
-            child: Center(
-              child: _isTesting
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _isCompleted
-                              ? Icons.check_circle_rounded
-                              : Icons.send_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          _isCompleted
-                              ? 'Дальше'
-                              : 'Отправить на проверку',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-              ),
-            ),
+      child: Container(
+        width: double.infinity,
+        height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: isEnabled
+              ? LinearGradient(
+                  colors: isDark
+                      ? [_primaryPurple.withValues(alpha: 0.25), _accentPink.withValues(alpha: 0.15)]
+                      : [_primaryPurple, _accentPink],
+                )
+              : null,
+          color: isEnabled ? null : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+          border: isEnabled && isDark
+              ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+              : null,
+          boxShadow: isEnabled && !isDark
+              ? [
+                  BoxShadow(
+                    color: _primaryPurple.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [],
+        ),
+        child: ElevatedButton(
+          onPressed: isEnabled ? (_isCompleted ? _goToNextItem : _runTests) : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
+          child: _isTesting
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _isCompleted ? Icons.check_circle_rounded : Icons.send_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      _isCompleted 
+                          ? (_hasNextItem ? 'Дальше' : 'Завершить курс и получить сертификат') 
+                          : 'Отправить на проверку',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );

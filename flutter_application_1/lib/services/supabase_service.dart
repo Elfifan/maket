@@ -321,9 +321,9 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
         'purchase_date': DateTime.now().toIso8601String(),
       });
       
-      // Если покупка первая и платная, выдаем достижение ID 7
+      // Если покупка первая и платная, выдаем достижение ID 8
       if (isFirstPurchase && (course.price ?? 0) > 0) {
-        await awardAchievement(userId, 7);
+        await awardAchievement(userId, 8);
       }
 
       await sendEmailReceipt(

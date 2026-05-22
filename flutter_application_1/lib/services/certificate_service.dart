@@ -28,8 +28,10 @@ class CertificateService {
         return existingCertificate;
       }
 
+      final String verificationCode = _uuid.v4().substring(0, 8).toUpperCase();
+
       // Генерируем PDF
-      final pdfBytes = await _generateCertificatePdf(user, course);
+      final pdfBytes = await _generateCertificatePdf(user, course, verificationCode);
 
       // Создаем уникальное имя файла
       final fileName = 'certificate_${user.id}_${course.id}_${_uuid.v4()}.pdf';
@@ -46,10 +48,11 @@ class CertificateService {
         userId: user.id!,
         courseId: course.id,
         certificateUrl: certificateUrl,
+        verificationCode: verificationCode,
       );
 
-      // Выдаем достижение ID 8 за завершение любого курса
-      await SupabaseService().awardAchievement(user.id!, 8);
+      // Выдаем достижение ID 9 за завершение любого курса
+      await SupabaseService().awardAchievement(user.id!, 9);
 
       return certificate;
     } catch (e) {
@@ -103,168 +106,176 @@ class CertificateService {
     return CertificateModel.fromJson(row);
   }
 
-  Future<Uint8List> _generateCertificatePdf(UserModel user, CourseModel course) async {
+  Future<Uint8List> _generateCertificatePdf(UserModel user, CourseModel course, String verificationCode) async {
     final pdf = pw.Document();
 
-    // Load Roboto fonts
     final regularFont = pw.Font.ttf(await rootBundle.load('assets/fonts/Roboto-Regular.ttf'));
     final boldFont = pw.Font.ttf(await rootBundle.load('assets/fonts/Roboto-Bold.ttf'));
 
+    final primaryPurple = PdfColor.fromHex('#8A74F9');
+    final goldColor = PdfColor.fromHex('#D4AF37');
+    final textDark = PdfColor.fromHex('#1E1E2C');
+    final textLight = PdfColor.fromHex('#A0A0B0');
+    final boxBorder = PdfColor.fromHex('#63B3A5');
+    final pinkLine = PdfColor.fromHex('#E8A0B8');
+
+    final String issueDate = "${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}";
+
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
+        pageFormat: PdfPageFormat.a4.landscape,
+        margin: const pw.EdgeInsets.all(16),
         build: (pw.Context context) {
           return pw.Container(
-            padding: const pw.EdgeInsets.all(40),
             decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.blue, width: 3),
-              gradient: pw.LinearGradient(
-                colors: [PdfColors.white, PdfColors.grey100],
-                begin: pw.Alignment.topCenter,
-                end: pw.Alignment.bottomCenter,
-              ),
+              border: pw.Border.all(color: goldColor, width: 1.5),
             ),
-            child: pw.Column(
-              mainAxisAlignment: pw.MainAxisAlignment.center,
-              children: [
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(20),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.blue,
-                    borderRadius: pw.BorderRadius.circular(10),
-                  ),
-                  child: pw.Text(
-                    'СЕРТИФИКАТ',
-                    style: pw.TextStyle(
-                      fontSize: 42,
-                      color: PdfColors.white,
-                      font: boldFont,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                    textAlign: pw.TextAlign.center,
-                  ),
-                ),
-                pw.SizedBox(height: 30),
-                pw.Text(
-                  'О ЗАВЕРШЕНИИ КУРСА',
-                  style: pw.TextStyle(
-                    fontSize: 28,
-                    color: PdfColors.blue900,
-                    font: boldFont,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                  textAlign: pw.TextAlign.center,
-                ),
-                pw.SizedBox(height: 50),
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(15),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.blue200, width: 1),
-                    borderRadius: pw.BorderRadius.circular(5),
-                  ),
-                  child: pw.Text(
-                    'Настоящим удостоверяется, что',
-                    style: pw.TextStyle(
-                      fontSize: 20,
-                      font: regularFont,
-                    ),
-                    textAlign: pw.TextAlign.center,
-                  ),
-                ),
-                pw.SizedBox(height: 30),
-                pw.Container(
-                  padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.blue50,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Text(
-                    user.name ?? 'Пользователь',
-                    style: pw.TextStyle(
-                      fontSize: 32,
-                      color: PdfColors.blue,
-                      font: boldFont,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                    textAlign: pw.TextAlign.center,
-                  ),
-                ),
-                pw.SizedBox(height: 30),
-                pw.Text(
-                  'успешно завершил(а) курс',
-                  style: pw.TextStyle(
-                    fontSize: 20,
-                    font: regularFont,
-                  ),
-                  textAlign: pw.TextAlign.center,
-                ),
-                pw.SizedBox(height: 30),
-                pw.Container(
-                  padding: const pw.EdgeInsets.all(10),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.green50,
-                    border: pw.Border.all(color: PdfColors.green, width: 2),
-                    borderRadius: pw.BorderRadius.circular(5),
-                  ),
-                  child: pw.Text(
-                    course.name,
-                    style: pw.TextStyle(
-                      fontSize: 26,
-                      color: PdfColors.green,
-                      font: boldFont,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                    textAlign: pw.TextAlign.center,
-                  ),
-                ),
-                pw.SizedBox(height: 50),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Column(
-                      children: [
-                        pw.Text(
-                          'Дата выдачи:',
-                          style: pw.TextStyle(
-                            fontSize: 16,
-                            font: regularFont,
-                            color: PdfColors.grey700,
+            child: pw.Container(
+              margin: const pw.EdgeInsets.all(4),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: primaryPurple, width: 4),
+                color: PdfColors.white,
+              ),
+              padding: const pw.EdgeInsets.fromLTRB(40, 40, 40, 30),
+              child: pw.Column(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  // HEADER
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      // LEFT HEADER
+                      pw.Row(
+                        children: [
+                          pw.Container(
+                            width: 36,
+                            height: 36,
+                            decoration: pw.BoxDecoration(
+                              color: primaryPurple,
+                              borderRadius: pw.BorderRadius.circular(8),
+                            ),
+                            child: pw.Center(
+                              child: pw.Text('K', style: pw.TextStyle(color: PdfColors.white, font: boldFont, fontSize: 20)),
+                            ),
+                          ),
+                          pw.SizedBox(width: 12),
+                          pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text('KODIX ACADEMY', style: pw.TextStyle(font: boldFont, fontSize: 16, color: textDark, letterSpacing: 1.5)),
+                              pw.SizedBox(height: 2),
+                              pw.Text('МЕЖДУНАРОДНЫЙ СЕРТИФИКАТ', style: pw.TextStyle(font: regularFont, fontSize: 8, color: textLight, letterSpacing: 2)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      // RIGHT HEADER
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border(
+                            left: pw.BorderSide(color: goldColor, width: 1.5),
+                            right: pw.BorderSide(color: goldColor, width: 1.5),
                           ),
                         ),
-                        pw.Text(
-                          DateTime.now().toString().split(' ')[0],
-                          style: pw.TextStyle(
-                            fontSize: 18,
-                            font: boldFont,
-                            fontWeight: pw.FontWeight.bold,
+                        child: pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          decoration: pw.BoxDecoration(
+                            border: pw.Border.all(color: goldColor, width: 1),
+                            borderRadius: pw.BorderRadius.circular(20),
+                          ),
+                          child: pw.Row(
+                            mainAxisSize: pw.MainAxisSize.min,
+                            children: [
+                              pw.Container(width: 4, height: 4, decoration: pw.BoxDecoration(color: goldColor, shape: pw.BoxShape.circle)),
+                              pw.SizedBox(width: 6),
+                              pw.Text('VERIFIED GRADUATE', style: pw.TextStyle(color: goldColor, font: boldFont, fontSize: 10, letterSpacing: 1.5)),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                    pw.Column(
-                      children: [
-                        pw.Text(
-                          'Код верификации:',
-                          style: pw.TextStyle(
-                            fontSize: 16,
-                            font: regularFont,
-                            color: PdfColors.grey700,
-                          ),
+                      ),
+                    ],
+                  ),
+
+                  // BODY
+                  pw.Column(
+                    children: [
+                      pw.Text(
+                        'СЕРТИФИКАТ',
+                        style: pw.TextStyle(font: boldFont, fontSize: 42, color: textDark, letterSpacing: 8),
+                      ),
+                      pw.SizedBox(height: 6),
+                      pw.Text(
+                        'ОБ УСПЕШНОМ ПРОХОЖДЕНИИ КУРСА',
+                        style: pw.TextStyle(font: regularFont, fontSize: 12, color: primaryPurple, letterSpacing: 3),
+                      ),
+                      pw.SizedBox(height: 30),
+                      pw.Text(
+                        'Настоящий документ удостоверяет, что',
+                        style: pw.TextStyle(font: regularFont, fontSize: 12, color: textDark),
+                      ),
+                      pw.SizedBox(height: 20),
+                      pw.Text(
+                        user.name ?? 'Ученик',
+                        style: pw.TextStyle(font: boldFont, fontSize: 24, color: textDark),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Container(width: 200, height: 1, color: pinkLine),
+                      pw.SizedBox(height: 16),
+                      pw.Text(
+                        'успешно завершил(а) обучение по программе курса:',
+                        style: pw.TextStyle(font: regularFont, fontSize: 12, color: textDark),
+                      ),
+                      pw.SizedBox(height: 16),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border.all(color: boxBorder, width: 1.5),
+                          borderRadius: pw.BorderRadius.circular(8),
                         ),
-                        pw.Text(
-                          _uuid.v4().substring(0, 8).toUpperCase(),
-                          style: pw.TextStyle(
-                            fontSize: 18,
-                            font: boldFont,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.blue,
-                          ),
+                        child: pw.Text(
+                          course.name,
+                          style: pw.TextStyle(font: boldFont, fontSize: 16, color: textDark),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                      ),
+                    ],
+                  ),
+
+                  // FOOTER
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: pw.CrossAxisAlignment.end,
+                    children: [
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(issueDate, style: pw.TextStyle(font: boldFont, fontSize: 12, color: textDark)),
+                          pw.SizedBox(height: 4),
+                          pw.Text('ДАТА ВЫДАЧИ', style: pw.TextStyle(font: regularFont, fontSize: 8, color: textLight, letterSpacing: 1)),
+                        ],
+                      ),
+                      pw.Column(
+                        children: [
+                          pw.Text('ЛР', style: pw.TextStyle(font: boldFont, fontSize: 14, color: textDark)),
+                          pw.SizedBox(height: 4),
+                          pw.Container(width: 150, height: 1, color: PdfColors.grey300),
+                          pw.SizedBox(height: 4),
+                          pw.Text('РУКОВОДИТЕЛЬ АКАДЕМИИ', style: pw.TextStyle(font: regularFont, fontSize: 8, color: textLight, letterSpacing: 1)),
+                        ],
+                      ),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                        children: [
+                          pw.Text(verificationCode, style: pw.TextStyle(font: boldFont, fontSize: 12, color: textDark)),
+                          pw.SizedBox(height: 4),
+                          pw.Text('КОД ВЕРИФИКАЦИИ', style: pw.TextStyle(font: regularFont, fontSize: 8, color: textLight, letterSpacing: 1)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -298,9 +309,9 @@ class CertificateService {
     required int userId,
     required int courseId,
     required String certificateUrl,
+    required String verificationCode,
   }) async {
     return _withRetry(() async {
-      final verificationCode = _uuid.v4().substring(0, 8).toUpperCase();
 
       final response = await _supabase
           .from('certificates')

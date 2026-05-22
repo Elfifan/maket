@@ -58,6 +58,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (errorMessage == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Регистрация прошла успешно!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
       Navigator.pushReplacementNamed(context, '/login');
     } else {
       setState(() => _errorMessage = errorMessage);

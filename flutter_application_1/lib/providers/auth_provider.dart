@@ -46,7 +46,7 @@ class AuthProvider with ChangeNotifier {
       );
       
       if (_currentUser != null) {
-        await _supabaseService.awardAchievement(_currentUser!.id!, 9);
+        await _supabaseService.awardAchievement(_currentUser!.id!, 7);
       }
       
       _isLoading = false;

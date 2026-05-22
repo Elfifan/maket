@@ -21,6 +21,8 @@ class MyHttpOverrides extends HttpOverrides {
   }
 }
 
+final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+
 void main() {
   // 3. Устанавливаем глобальный обход сертификатов ПЕРЕД запуском приложения
   HttpOverrides.global = MyHttpOverrides();
@@ -47,6 +49,7 @@ class MyApp extends StatelessWidget {
             theme: ThemeProvider.lightTheme,
             darkTheme: ThemeProvider.darkTheme,
             themeMode: themeProvider.themeMode,
+            navigatorObservers: [routeObserver],
             home: const InitialScreen(),
             routes: {
               '/login': (context) => const LoginScreen(),

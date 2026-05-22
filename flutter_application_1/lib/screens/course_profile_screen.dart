@@ -10,6 +10,7 @@ import '../providers/theme_provider.dart';
 import '../services/certificate_service.dart';
 import '../services/chat_service.dart';
 import '../services/supabase_service.dart';
+import '../main.dart';
 import 'course_reviews_section.dart';
 import 'submodule_content_screen.dart';
 import 'tests_screen.dart';
@@ -19,6 +20,7 @@ import '../widgets/payment_dialog.dart';
 
 class CourseProfileScreen extends StatefulWidget {
   final CourseModel course;
+  static final ValueNotifier<bool> progressNotifier = ValueNotifier<bool>(false);
 
   const CourseProfileScreen({super.key, required this.course});
 
@@ -26,7 +28,7 @@ class CourseProfileScreen extends StatefulWidget {
   State<CourseProfileScreen> createState() => _CourseProfileScreenState();
 }
 
-class _CourseProfileScreenState extends State<CourseProfileScreen> {
+class _CourseProfileScreenState extends State<CourseProfileScreen> with RouteAware {
   List<Map<String, dynamic>> _courseStructure = [];
   Map<int, List<TestModel>> _submoduleTests = {};
   Map<int, List<PracticalTaskModel>> _practicalTasks = {};     
@@ -37,6 +39,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
   bool _isPurchasing = false;
   bool _isEnrolled = false;
   bool _hasCertificate = false;
+  bool _isGeneratingCertificate = false;
   int _selectedTabIndex = 0;
 
   // Константы дизайна
@@ -48,6 +51,37 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
     super.initState();
     _loadModules();
     _checkEnrollment();
+    CourseProfileScreen.progressNotifier.addListener(_onProgressChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final modalRoute = ModalRoute.of(context);
+    if (modalRoute != null) {
+      routeObserver.subscribe(this, modalRoute);
+    }
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    CourseProfileScreen.progressNotifier.removeListener(_onProgressChanged);
+    super.dispose();
+  }
+
+  void _onProgressChanged() {
+    if (mounted) {
+      _loadModules();
+    }
+  }
+
+  @override
+  void didPopNext() {
+    // Вызывается когда верхний экран (урок/тест) закрывается и мы возвращаемся на этот экран
+    if (mounted) {
+      _loadModules();
+    }
   }
 
   Future<void> _checkEnrollment() async {
@@ -96,11 +130,14 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
     final allTestsCompleted = submodulesWithTests.every((id) => _completedTestSubmodules.contains(id));
 
     if (allSubmodulesCompleted && allTestsCompleted) {
+      if (mounted) setState(() => _isGeneratingCertificate = true);
       // Генерируем сертификат
       final certificate = await CertificateService().generateAndUploadCertificate(
         user: user,
         course: widget.course,
       );
+
+      if (mounted) setState(() => _isGeneratingCertificate = false);
 
       if (certificate != null && mounted) {
         setState(() => _hasCertificate = true);
@@ -323,7 +360,30 @@ for (final module in _courseStructure) {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                if (_hasCertificate)
+                if (_isGeneratingCertificate)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Генерация сертификата...',
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (_hasCertificate)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -450,6 +510,7 @@ for (final module in _courseStructure) {
 
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: context.isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -458,6 +519,8 @@ for (final module in _courseStructure) {
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
+            shape: const Border(),
+            collapsedShape: const Border(),
             leading: CircleAvatar(
               backgroundColor: const Color(0xFFA58EFF).withValues(alpha: 0.1),
               child: Text("${module['order_module'] ?? index + 1}", 
@@ -532,7 +595,9 @@ for (final module in _courseStructure) {
                           practicalTasks: _practicalTasks,
                         ),
                       ),
-                    );
+                    ).then((_) {
+                      if (mounted) _loadModules();
+                    });
                   }
                 },
               ));
@@ -581,7 +646,9 @@ for (final module in _courseStructure) {
                           practicalTasks: _practicalTasks,
                         ),
                       ),
-                    );
+                    ).then((_) {
+                      if (mounted) _loadModules();
+                    });
                   },
                 ));
               }
@@ -629,7 +696,9 @@ for (final module in _courseStructure) {
                           practicalTasks: _practicalTasks,
                         ),
                       ),
-                    );
+                    ).then((_) {
+                      if (mounted) _loadModules();
+                    });
                   },
                 ));
               }

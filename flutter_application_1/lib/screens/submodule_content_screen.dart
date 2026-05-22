@@ -15,6 +15,7 @@ import '../services/supabase_service.dart';
 import '../services/certificate_service.dart';
 import 'tests_screen.dart';
 import 'practical_task_screen.dart';
+import 'course_profile_screen.dart';
 import '../models/practical_task_model.dart';
 import '../widgets/glass_container.dart';
 
@@ -135,6 +136,7 @@ void initState() {
       setState(() {
         _isLoading = false;
       });
+      _saveProgressAuto();
     } catch (e) {
       debugPrint('Video init failed: ${widget.contentUrl} / $e');
       setState(() {
@@ -159,6 +161,7 @@ void initState() {
           _markdownContent = utf8.decode(response.bodyBytes);
           _isLoading = false;
         });
+        _saveProgressAuto();
       } else {
         setState(() {
           _error = "Ошибка загрузки: ${response.statusCode}";
@@ -178,6 +181,18 @@ void initState() {
     _videoPlayerController?.dispose();
     _chewieController?.dispose();
     super.dispose();
+  }
+
+  void _saveProgressAuto() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.currentUser != null) {
+      try {
+        await SupabaseService().saveSubmoduleProgress(authProvider.currentUser!.id!, widget.submoduleId);
+        CourseProfileScreen.progressNotifier.value = !CourseProfileScreen.progressNotifier.value;
+      } catch (e) {
+        debugPrint('Error auto-saving submodule progress: $e');
+      }
+    }
   }
 
   bool get _hasNextSubmodule {
@@ -219,6 +234,7 @@ void initState() {
     // Сохраняем прогресс текущего подмодуля
     try {
       await SupabaseService().saveSubmoduleProgress(authProvider.currentUser!.id!, widget.submoduleId);
+      CourseProfileScreen.progressNotifier.value = !CourseProfileScreen.progressNotifier.value;
     } catch (e) {
       debugPrint('Error saving submodule progress: $e');
     }
@@ -299,6 +315,7 @@ void initState() {
     if (authProvider.currentUser != null) {
       try {
         await SupabaseService().saveSubmoduleProgress(authProvider.currentUser!.id!, widget.submoduleId);
+        CourseProfileScreen.progressNotifier.value = !CourseProfileScreen.progressNotifier.value;
       } catch (e) {
         debugPrint('Error saving submodule progress: $e');
         // Продолжаем, даже если сохранение не удалось
@@ -693,59 +710,52 @@ void initState() {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: GestureDetector(
-            onTap: onPressed,
-            child: Container(
-              width: double.infinity,
-              height: 56,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  colors: isLast 
-                    ? [Colors.green.withValues(alpha: 0.6), Colors.green.withValues(alpha: 0.4)]
-                    : [
-                        _primaryPurple.withValues(alpha: 0.18),
-                        const Color(0xFFF2C9D4).withValues(alpha: 0.12),
-                      ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border.all(
-                  color: isLast 
-                      ? Colors.green.withValues(alpha: 0.3)
-                      : Colors.white.withValues(alpha: 0.1),
-                ),
-              ),
-              child: Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      text,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: Color(0x80000000),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (!isLast) ...[
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-                    ],
-                  ],
-                ),
-              ),
+      child: Container(
+        width: double.infinity,
+        height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: isLast 
+              ? [Colors.green.withValues(alpha: 0.6), Colors.green.withValues(alpha: 0.4)]
+              : (context.isDark
+                  ? [_primaryPurple.withValues(alpha: 0.25), const Color(0xFFF2C9D4).withValues(alpha: 0.15)]
+                  : [_primaryPurple, const Color(0xFFF2C9D4)]),
+          ),
+          border: isLast 
+              ? Border.all(color: Colors.green.withValues(alpha: 0.3))
+              : (context.isDark ? Border.all(color: Colors.white.withValues(alpha: 0.1)) : null),
+          boxShadow: (context.isDark || isLast) ? null : [
+            BoxShadow(
+              color: _primaryPurple.withValues(alpha: 0.3), 
+              blurRadius: 12, 
+              offset: const Offset(0, 4)
             ),
+          ],
+        ),
+        child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              if (!isLast) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+              ],
+            ],
           ),
         ),
       ),
