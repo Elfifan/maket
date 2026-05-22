@@ -723,17 +723,17 @@ Future<void> savePracticalTaskResult(
     }
   }
 
-/// Получить завершенные практические задания
+/// Получить завершенные практические задания (возвращает набор id_submodule)
 Future<Set<int>> getCompletedPracticalTasks(int userId) async {
   try {
     final response = await _client
         .from('student_practical_result')
-        .select('id_task')
+        .select('id_submodule')
         .eq('id_user', userId)
         .eq('status', 'completed');
 
     return List<Map<String, dynamic>>.from(response)
-        .map((row) => row['id_task'] as int)
+        .map((row) => row['id_submodule'] as int)
         .toSet();
     } catch (e) {
       debugPrint('Error getting completed practical tasks: $e');
