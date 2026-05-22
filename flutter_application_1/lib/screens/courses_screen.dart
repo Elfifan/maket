@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/course_model.dart';
@@ -29,74 +30,73 @@ class _CoursesScreenState extends State<CoursesScreen> {
     {'label': 'Мои курсы', 'icon': Icons.book_rounded},
   ];
 
+  StreamSubscription? _coursesSub;
+  StreamSubscription? _myCoursesSub;
+
   @override
   void initState() {
     super.initState();
-    _loadCourses();
+    _setupStreams();
   }
 
-  Future<void> _loadCourses() async {
+  Future<void> _setupStreams() async {
     if (!mounted) return;
     setState(() {
       _loading = true;
       _errorMessage = null;
     });
 
-    int attempts = 0;
-    const int maxAttempts = 3;
-    const Duration timeoutDuration = Duration(seconds: 1);
+    try {
+      await SupabaseService().initialize();
+      if (!mounted) return;
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    while (attempts < maxAttempts) {
-      try {
-        attempts++;
-        debugPrint('Загрузка курсов, попытка $attempts из $maxAttempts...');
-
-        await SupabaseService().initialize();
-        if (!mounted) return;
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-        // Параллельный запуск запросов с таймаутом
-        final results = await Future.wait([
-          SupabaseService().getCourses().timeout(timeoutDuration),
-          if (authProvider.currentUser != null)
-            SupabaseService()
-                .getUserCourses(userId: authProvider.currentUser!.id!)
-                .timeout(timeoutDuration)
-          else
-            Future.value(<CourseModel>[]),
-        ]);
-
-        if (!mounted) return;
-
-        final allCourses = results[0];
-        final myCourses = results[1];
-
+      _coursesSub = SupabaseService().streamCourses().listen((courses) {
         if (mounted) {
           setState(() {
             _allCourses.clear();
-            _allCourses.addAll(allCourses);
-            _myCourses = myCourses;
+            _allCourses.addAll(courses);
             _applyFilter(_activeFilter);
             _loading = false;
           });
         }
-        return; // Успешно загружено, выходим из метода
-      } catch (e) {
-        debugPrint('Попытка $attempts не удалась: $e');
-        if (attempts >= maxAttempts) {
+      }, onError: (e) {
+        debugPrint('Error streaming courses: $e');
+        if (mounted && _allCourses.isEmpty) {
+          setState(() {
+            _errorMessage = 'Не удалось загрузить данные. Проверьте интернет.';
+            _loading = false;
+          });
+        }
+      });
+
+      if (authProvider.currentUser != null) {
+        _myCoursesSub = SupabaseService()
+            .streamUserCourses(userId: authProvider.currentUser!.id!)
+            .listen((myCourses) {
           if (mounted) {
             setState(() {
-              _errorMessage =
-                  'Не удалось загрузить данные после $maxAttempts попыток. Проверьте интернет.';
-              _loading = false;
+              _myCourses = myCourses;
+              _applyFilter(_activeFilter);
             });
           }
-        } else {
-          // Небольшая пауза перед следующей попыткой
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
+        }, onError: (e) => debugPrint('Error streaming user courses: $e'));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Ошибка инициализации. Проверьте интернет.';
+          _loading = false;
+        });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _coursesSub?.cancel();
+    _myCoursesSub?.cancel();
+    super.dispose();
   }
 
   void _applyFilter(String categoryLabel) {
@@ -148,7 +148,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     ),
                     const SizedBox(height: 24),
                     ElevatedButton(
-                      onPressed: _loadCourses,
+                      onPressed: _setupStreams,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primaryPurple,
                         shape: RoundedRectangleBorder(
@@ -169,7 +169,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
               ),
             )
           : RefreshIndicator(
-              onRefresh: _loadCourses,
+              onRefresh: () async {
+                // Если стримы работают, pull-to-refresh может просто делать небольшую задержку
+                await Future.delayed(const Duration(milliseconds: 800));
+              },
               color: _primaryPurple,
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(

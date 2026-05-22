@@ -319,10 +319,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Text('Мои достижения', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.textPrimary)),
         const SizedBox(height: 16),
-        FutureBuilder<List<AchievementModel>>(
-          future: SupabaseService().getUserAchievements(userId),
+        StreamBuilder<List<AchievementModel>>(
+          stream: SupabaseService().streamUserAchievements(userId),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
               return const SizedBox(height: 160, child: Center(child: CircularProgressIndicator(color: _primaryPurple)));
             }
             final achievements = snapshot.data ?? [];
@@ -398,10 +398,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Text('Мои сертификаты', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.textPrimary)),
         const SizedBox(height: 16),
-        FutureBuilder<List<CertificateModel>>(
-          future: SupabaseService().getUserCertificates(userId),
+        StreamBuilder<List<CertificateModel>>(
+          stream: SupabaseService().streamUserCertificates(userId),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
               return const SizedBox(height: 160, child: Center(child: CircularProgressIndicator(color: _primaryPurple)));
             }
             final certificates = snapshot.data ?? [];

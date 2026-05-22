@@ -288,14 +288,13 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
           .from('achievements_user')
           .select('id')
           .eq('id_user', userId)
-          .eq('id_achievement', achievementId)
+          .eq('id_achievements', achievementId)
           .maybeSingle();
 
       if (existing == null) {
         await _client.from('achievements_user').insert({
           'id_user': userId,
-          'id_achievement': achievementId,
-          'date_achieved': DateTime.now().toIso8601String(),
+          'id_achievements': achievementId,
         });
         debugPrint('Achievement $achievementId awarded to user $userId');
       }
@@ -742,7 +741,43 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
     }
   }
 
+  // ================= STREAMS (Real-time) =================
+
+  Stream<List<CourseModel>> streamCourses({String? search, String? category}) {
+    // В Supabase Streams фильтрация `ilike` и т.д. не работает напрямую в .stream(),
+    // поэтому мы слушаем всю таблицу, а потом вызываем обычный getCourses.
+    return _client
+        .from('courses')
+        .stream(primaryKey: ['id'])
+        .asyncMap((_) => getCourses(search: search, category: category));
+  }
+
+  Stream<List<CourseModel>> streamUserCourses({required int userId}) {
+    return _client
+        .from('user_courses')
+        .stream(primaryKey: ['id'])
+        .eq('id_user', userId)
+        .asyncMap((_) => getUserCourses(userId: userId));
+  }
+
+  Stream<List<AchievementModel>> streamUserAchievements(int userId) {
+    return _client
+        .from('achievements_user')
+        .stream(primaryKey: ['id'])
+        .eq('id_user', userId)
+        .asyncMap((_) => getUserAchievements(userId));
+  }
+
+  Stream<List<CertificateModel>> streamUserCertificates(int userId) {
+    return _client
+        .from('certificates')
+        .stream(primaryKey: ['id'])
+        .eq('id_user', userId)
+        .asyncMap((_) => getUserCertificates(userId));
+  }
+
   SupabaseClient get client {
     return _client;
   }
 }
+

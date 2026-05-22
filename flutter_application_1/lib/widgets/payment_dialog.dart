@@ -3,6 +3,42 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../providers/theme_provider.dart';
 
+class CardNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    String newText = newValue.text.replaceAll(' ', '');
+    String formatted = '';
+    for (int i = 0; i < newText.length; i++) {
+      formatted += newText[i];
+      if ((i + 1) % 4 == 0 && i != newText.length - 1) {
+        formatted += ' ';
+      }
+    }
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+class ExpiryDateFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    String newText = newValue.text.replaceAll('/', '');
+    String formatted = '';
+    for (int i = 0; i < newText.length; i++) {
+      formatted += newText[i];
+      if (i == 1 && i != newText.length - 1) {
+        formatted += '/';
+      }
+    }
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
 class PaymentDialog extends StatefulWidget {
   final double amount;
 
@@ -115,9 +151,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(16),
+                  CardNumberFormatter(),
                 ],
                 validator: (value) =>
-                    value == null || value.length < 16 ? 'Введите 16 цифр' : null,
+                    value == null || value.length < 19 ? 'Введите 16 цифр' : null,
               ),
               const SizedBox(height: 16),
               Row(
@@ -148,12 +185,27 @@ class _PaymentDialogState extends State<PaymentDialog> {
                       ),
                       keyboardType: TextInputType.datetime,
                       inputFormatters: [
-                        LengthLimitingTextInputFormatter(5),
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(4),
+                        ExpiryDateFormatter(),
                       ],
                       validator: (value) {
                         if (value == null || value.length < 5 || !value.contains('/')) {
                           return 'ММ/ГГ';
                         }
+                        final parts = value.split('/');
+                        if (parts.length != 2) return 'ММ/ГГ';
+                        final month = int.tryParse(parts[0]);
+                        final year = int.tryParse(parts[1]);
+                        if (month == null || month < 1 || month > 12) return 'Месяц (01-12)';
+                        if (year == null) return 'Год';
+                        
+                        final currentYear = DateTime.now().year % 100;
+                        final currentMonth = DateTime.now().month;
+                        
+                        if (year < currentYear) return 'Истёк';
+                        if (year == currentYear && month < currentMonth) return 'Истёк';
+                        
                         return null;
                       },
                     ),
@@ -195,52 +247,51 @@ class _PaymentDialogState extends State<PaymentDialog> {
                 ],
               ),
               const SizedBox(height: 32),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: GestureDetector(
-                    onTap: _isProcessing ? null : _processPayment,
-                    child: Container(
-                      width: double.infinity,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFFA58EFF).withValues(alpha: 0.18),
-                            const Color(0xFFF2C9D4).withValues(alpha: 0.12),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: Center(
-                        child: _isProcessing
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text(
-                                'Продолжить',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  shadows: [
-                                    Shadow(
-                                      color: Color(0x80000000),
-                                      blurRadius: 6,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                      ),
-                    ),
+              Container(
+                width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: context.isDark
+                        ? [const Color(0xFFA58EFF).withValues(alpha: 0.25), const Color(0xFFF2C9D4).withValues(alpha: 0.15)]
+                        : [const Color(0xFFA58EFF), const Color(0xFFF2C9D4)],
                   ),
+                  border: context.isDark
+                      ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                      : null,
+                  boxShadow: context.isDark ? null : [
+                    BoxShadow(
+                      color: const Color(0xFFA58EFF).withValues(alpha: 0.3), 
+                      blurRadius: 12, 
+                      offset: const Offset(0, 4)
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: _isProcessing ? null : _processPayment,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: _isProcessing
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Продолжить',
+                          style: TextStyle(
+                            fontSize: 16, 
+                            fontWeight: FontWeight.bold, 
+                            color: Colors.white 
+                          ),
+                        ),
                 ),
               ),
             ],
