@@ -10,7 +10,6 @@ import '../providers/theme_provider.dart';
 import '../services/judge0_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/glass_container.dart';
-import 'dart:ui' as ui;
 import 'submodule_content_screen.dart';
 import 'course_profile_screen.dart';
 
