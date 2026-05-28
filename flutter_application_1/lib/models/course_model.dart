@@ -9,6 +9,8 @@ class CourseModel {
   final int? complexity;
   final String? status; // Изменено с bool? на String?
   final String? category;
+  DateTime? startDate;
+  DateTime? completedDate;
 
   CourseModel({
     required this.id,

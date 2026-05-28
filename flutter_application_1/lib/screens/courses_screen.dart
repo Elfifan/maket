@@ -20,6 +20,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   List<CourseModel> _displayCourses = [];
   List<CourseModel> _myCourses = [];
   List<CourseModel> _favouriteCourses = [];
+  List<CourseModel> _completedCourses = [];
   bool _loading = false;
   String? _errorMessage;
   String _activeFilter = 'Все';
@@ -36,11 +37,13 @@ class _CoursesScreenState extends State<CoursesScreen> {
     {'label': 'Все', 'icon': Icons.grid_view_rounded},
     {'label': 'Мои курсы', 'icon': Icons.book_rounded},
     {'label': 'Избранное', 'icon': Icons.favorite_rounded},
+    {'label': 'Пройденные', 'icon': Icons.assignment_turned_in_rounded},
   ];
 
   StreamSubscription? _coursesSub;
   StreamSubscription? _myCoursesSub;
   StreamSubscription? _favouriteCoursesSub;
+  StreamSubscription? _completedCoursesSub;
 
   @override
   void initState() {
@@ -101,6 +104,17 @@ class _CoursesScreenState extends State<CoursesScreen> {
             });
           }
         }, onError: (e) => debugPrint('Error streaming favourite courses: $e'));
+
+        _completedCoursesSub = SupabaseService()
+            .streamUserCompletedCourses(userId: authProvider.currentUser!.id!)
+            .listen((completedCourses) {
+          if (mounted) {
+            setState(() {
+              _completedCourses = completedCourses;
+              _applyFilter();
+            });
+          }
+        }, onError: (e) => debugPrint('Error streaming completed courses: $e'));
       }
     } catch (e) {
       if (mounted) {
@@ -118,6 +132,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     _coursesSub?.cancel();
     _myCoursesSub?.cancel();
     _favouriteCoursesSub?.cancel();
+    _completedCoursesSub?.cancel();
     super.dispose();
   }
 
@@ -132,6 +147,8 @@ class _CoursesScreenState extends State<CoursesScreen> {
         baseList = _myCourses;
       } else if (_activeFilter == 'Избранное') {
         baseList = _favouriteCourses;
+      } else if (_activeFilter == 'Пройденные') {
+        baseList = _completedCourses;
       } else {
         baseList = _allCourses;
       }
@@ -145,8 +162,13 @@ class _CoursesScreenState extends State<CoursesScreen> {
         if (_selectedCategory != null && course.category != _selectedCategory) {
           return false;
         }
-        if (_selectedYear != null && course.dateCreate?.year != _selectedYear) {
-          return false;
+        if (_selectedYear != null) {
+          final year = _activeFilter == 'Пройденные' 
+              ? course.completedDate?.year 
+              : course.dateCreate?.year;
+          if (year != _selectedYear) {
+            return false;
+          }
         }
         if (_selectedComplexity != null && course.complexity != _selectedComplexity) {
           return false;
@@ -157,6 +179,11 @@ class _CoursesScreenState extends State<CoursesScreen> {
         return true;
       }).toList();
     });
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
   }
 
   @override
@@ -389,11 +416,11 @@ class _CoursesScreenState extends State<CoursesScreen> {
                           )
                         : SliverGrid(
                             gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 2,
                                   crossAxisSpacing: 16,
                                   mainAxisSpacing: 16,
-                                  childAspectRatio: 0.75,
+                                  childAspectRatio: _activeFilter == 'Пройденные' ? 0.70 : 0.75,
                                 ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) =>
@@ -827,26 +854,39 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${course.complexity ?? 1} уровень',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: context.textSecondary,
+                  if (_activeFilter == 'Пройденные' && course.startDate != null && course.completedDate != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Начат: ${_formatDate(course.startDate)}',
+                      style: TextStyle(fontSize: 10, color: context.textSecondary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Пройден: ${_formatDate(course.completedDate)}',
+                      style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.w600),
+                    ),
+                  ] else ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${course.complexity ?? 1} уровень',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: context.textSecondary,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${course.price?.toInt() ?? 0} ₽',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: _primaryPurple,
+                        Text(
+                          '${course.price?.toInt() ?? 0} ₽',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: _primaryPurple,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

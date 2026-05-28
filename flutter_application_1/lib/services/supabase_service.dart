@@ -858,6 +858,64 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
         .asyncMap((_) => getUserCertificates(userId));
   }
 
+  Future<List<CourseModel>> getUserCompletedCourses({required int userId}) async {
+    try {
+      final certificatesResp = await _client
+          .from('certificates')
+          .select('id_courses, issue_date')
+          .eq('id_user', userId);
+      
+      final certsList = List<Map<String, dynamic>>.from(certificatesResp);
+      if (certsList.isEmpty) return [];
+      
+      final courseIds = certsList.map((c) => c['id_courses'] as int).toList();
+      
+      final enrollResp = await _client
+          .from('user_courses')
+          .select('id_courses, purchase_date')
+          .eq('id_user', userId)
+          .inFilter('id_courses', courseIds);
+          
+      final enrollList = List<Map<String, dynamic>>.from(enrollResp);
+      
+      final coursesResp = await _client
+          .from('courses')
+          .select('id,id_employee,name,description,icon,date_create,price,complexity,status,category')
+          .inFilter('id', courseIds)
+          .eq('status', 'Активный');
+          
+      final list = List<Map<String, dynamic>>.from(coursesResp as List);
+      
+      return list.map((json) {
+        final courseId = json['id'] as int;
+        
+        final cert = certsList.firstWhere((c) => c['id_courses'] == courseId, orElse: () => {});
+        final issueDateStr = cert['issue_date'];
+        final DateTime? completedDate = issueDateStr != null ? DateTime.tryParse(issueDateStr.toString()) : null;
+        
+        final enroll = enrollList.firstWhere((e) => e['id_courses'] == courseId, orElse: () => {});
+        final purchaseDateStr = enroll['purchase_date'];
+        final DateTime? startDate = purchaseDateStr != null ? DateTime.tryParse(purchaseDateStr.toString()) : null;
+        
+        final course = CourseModel.fromJson(json);
+        course.startDate = startDate;
+        course.completedDate = completedDate;
+        return course;
+      }).toList();
+    } catch (e) {
+      debugPrint('Error getting completed courses: $e');
+      return [];
+    }
+  }
+
+  Stream<List<CourseModel>> streamUserCompletedCourses({required int userId}) {
+    return _client
+        .from('certificates')
+        .stream(primaryKey: ['id'])
+        .eq('id_user', userId)
+        .asyncMap((_) => getUserCompletedCourses(userId: userId));
+  }
+
   SupabaseClient get client {
     return _client;
   }
