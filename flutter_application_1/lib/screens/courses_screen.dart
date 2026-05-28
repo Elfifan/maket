@@ -478,61 +478,142 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   const SizedBox(height: 16),
                   Text('Направление', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
+                  DropdownButtonFormField<String?>(
                     value: _selectedCategory,
                     dropdownColor: context.surfaceColor,
+                    borderRadius: BorderRadius.circular(16),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _primaryPurple),
+                    style: TextStyle(color: context.textPrimary, fontSize: 15),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: context.surfaceColor,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: context.borderColor, width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: _primaryPurple, width: 1.5),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: context.borderColor, width: 1),
+                      ),
                     ),
-                    items: ['Веб-разработка', 'База данных', 'Программирование']
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(color: context.textPrimary))))
-                        .toList(),
+                    items: [
+                      DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Все направления', style: TextStyle(color: context.textPrimary)),
+                      ),
+                      ...['Веб-разработка', 'База данных', 'Программирование']
+                          .map((e) => DropdownMenuItem<String?>(
+                                value: e,
+                                child: Text(e, style: TextStyle(color: context.textPrimary)),
+                              )),
+                    ],
                     onChanged: (val) => setModalState(() => _selectedCategory = val),
-                    hint: Text('Все направления', style: TextStyle(color: context.textSecondary)),
                   ),
                   const SizedBox(height: 16),
                   Text('Год', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<int>(
+                  DropdownButtonFormField<int?>(
                     value: _selectedYear,
                     dropdownColor: context.surfaceColor,
+                    borderRadius: BorderRadius.circular(16),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _primaryPurple),
+                    style: TextStyle(color: context.textPrimary, fontSize: 15),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: context.surfaceColor,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: context.borderColor, width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: _primaryPurple, width: 1.5),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: context.borderColor, width: 1),
+                      ),
                     ),
-                    items: [2023, 2024, 2025, 2026]
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e.toString(), style: TextStyle(color: context.textPrimary))))
-                        .toList(),
+                    items: [
+                      DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('Все года', style: TextStyle(color: context.textPrimary)),
+                      ),
+                      ...[2023, 2024, 2025, 2026]
+                          .map((e) => DropdownMenuItem<int?>(
+                                value: e,
+                                child: Text(e.toString(), style: TextStyle(color: context.textPrimary)),
+                              )),
+                    ],
                     onChanged: (val) => setModalState(() => _selectedYear = val),
-                    hint: Text('Все года', style: TextStyle(color: context.textSecondary)),
                   ),
                   const SizedBox(height: 16),
                   Text('Сложность', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<int>(
+                  DropdownButtonFormField<int?>(
                     value: _selectedComplexity,
                     dropdownColor: context.surfaceColor,
+                    borderRadius: BorderRadius.circular(16),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _primaryPurple),
+                    style: TextStyle(color: context.textPrimary, fontSize: 15),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: context.surfaceColor,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: context.borderColor, width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: _primaryPurple, width: 1.5),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: context.borderColor, width: 1),
+                      ),
                     ),
-                    items: [1, 2, 3, 4, 5]
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e.toString(), style: TextStyle(color: context.textPrimary))))
-                        .toList(),
+                    items: [
+                      DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('Любая сложность', style: TextStyle(color: context.textPrimary)),
+                      ),
+                      ...[1, 2, 3, 4, 5]
+                          .map((e) => DropdownMenuItem<int?>(
+                                value: e,
+                                child: Text(e.toString(), style: TextStyle(color: context.textPrimary)),
+                              )),
+                    ],
                     onChanged: (val) => setModalState(() => _selectedComplexity = val),
-                    hint: Text('Любая сложность', style: TextStyle(color: context.textSecondary)),
                   ),
                   const SizedBox(height: 16),
-                  SwitchListTile(
-                    title: Text('Только бесплатные', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w600)),
-                    value: _isFree,
-                    activeColor: _primaryPurple,
-                    onChanged: (val) => setModalState(() => _isFree = val),
-                    contentPadding: EdgeInsets.zero,
+                  Row(
+                    children: [
+                      Text(
+                        'Только бесплатные',
+                        style: TextStyle(
+                          color: context.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const Spacer(),
+                      Switch.adaptive(
+                        value: _isFree,
+                        onChanged: (val) => setModalState(() => _isFree = val),
+                        activeTrackColor: _primaryPurple.withValues(alpha: 0.5),
+                        activeThumbColor: _primaryPurple,
+                        inactiveThumbColor: Colors.white,
+                        inactiveTrackColor: context.isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.1),
+                        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   Row(
