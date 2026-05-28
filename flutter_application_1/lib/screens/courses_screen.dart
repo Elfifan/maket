@@ -23,6 +23,12 @@ class _CoursesScreenState extends State<CoursesScreen> {
   String? _errorMessage;
   String _activeFilter = 'Все';
 
+  final TextEditingController _searchController = TextEditingController();
+  String? _selectedCategory;
+  int? _selectedYear;
+  int? _selectedComplexity;
+  bool _isFree = false;
+
   static const Color _primaryPurple = Color(0xFFA58EFF);
 
   final List<Map<String, dynamic>> _categories = [
@@ -56,7 +62,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
           setState(() {
             _allCourses.clear();
             _allCourses.addAll(courses);
-            _applyFilter(_activeFilter);
+            _applyFilter();
             _loading = false;
           });
         }
@@ -77,7 +83,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
           if (mounted) {
             setState(() {
               _myCourses = myCourses;
-              _applyFilter(_activeFilter);
+              _applyFilter();
             });
           }
         }, onError: (e) => debugPrint('Error streaming user courses: $e'));
@@ -94,19 +100,40 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _coursesSub?.cancel();
     _myCoursesSub?.cancel();
     super.dispose();
   }
 
-  void _applyFilter(String categoryLabel) {
+  void _applyFilter([String? categoryLabel]) {
     setState(() {
-      _activeFilter = categoryLabel;
-      if (categoryLabel == 'Все') {
-        _displayCourses = List.from(_allCourses);
-      } else if (categoryLabel == 'Мои курсы') {
-        _displayCourses = List.from(_myCourses);
+      if (categoryLabel != null) {
+        _activeFilter = categoryLabel;
       }
+      
+      List<CourseModel> baseList = _activeFilter == 'Мои курсы' ? _myCourses : _allCourses;
+      
+      _displayCourses = baseList.where((course) {
+        if (_searchController.text.isNotEmpty) {
+          if (!course.name.toLowerCase().contains(_searchController.text.toLowerCase())) {
+            return false;
+          }
+        }
+        if (_selectedCategory != null && course.category != _selectedCategory) {
+          return false;
+        }
+        if (_selectedYear != null && course.dateCreate?.year != _selectedYear) {
+          return false;
+        }
+        if (_selectedComplexity != null && course.complexity != _selectedComplexity) {
+          return false;
+        }
+        if (_isFree && (course.price != null && course.price! > 0)) {
+          return false;
+        }
+        return true;
+      }).toList();
     });
   }
 
@@ -223,6 +250,49 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   ),
 
                   SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: (_) => _applyFilter(),
+                              style: TextStyle(color: context.textPrimary),
+                              decoration: InputDecoration(
+                                hintText: 'Поиск курсов...',
+                                hintStyle: TextStyle(color: context.textSecondary),
+                                prefixIcon: Icon(Icons.search, color: context.textSecondary),
+                                filled: true,
+                                fillColor: context.surfaceColor,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: _showFilterBottomSheet,
+                            child: Container(
+                              height: 48,
+                              width: 48,
+                              decoration: BoxDecoration(
+                                color: _primaryPurple,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(Icons.tune, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+                  SliverToBoxAdapter(
                     child: SizedBox(
                       height: 45,
                       child: ListView.builder(
@@ -312,6 +382,154 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  void _showFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: context.bgColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 24,
+                right: 24,
+                top: 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Фильтры',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.close, color: context.textPrimary),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Направление', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _selectedCategory,
+                    dropdownColor: context.surfaceColor,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: context.surfaceColor,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                    items: ['Веб-разработка', 'База данных', 'Программирование']
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(color: context.textPrimary))))
+                        .toList(),
+                    onChanged: (val) => setModalState(() => _selectedCategory = val),
+                    hint: Text('Все направления', style: TextStyle(color: context.textSecondary)),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Год', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<int>(
+                    value: _selectedYear,
+                    dropdownColor: context.surfaceColor,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: context.surfaceColor,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                    items: [2023, 2024, 2025, 2026]
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e.toString(), style: TextStyle(color: context.textPrimary))))
+                        .toList(),
+                    onChanged: (val) => setModalState(() => _selectedYear = val),
+                    hint: Text('Все года', style: TextStyle(color: context.textSecondary)),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Сложность', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<int>(
+                    value: _selectedComplexity,
+                    dropdownColor: context.surfaceColor,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: context.surfaceColor,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                    items: [1, 2, 3, 4, 5]
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e.toString(), style: TextStyle(color: context.textPrimary))))
+                        .toList(),
+                    onChanged: (val) => setModalState(() => _selectedComplexity = val),
+                    hint: Text('Любая сложность', style: TextStyle(color: context.textSecondary)),
+                  ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: Text('Только бесплатные', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.w600)),
+                    value: _isFree,
+                    activeColor: _primaryPurple,
+                    onChanged: (val) => setModalState(() => _isFree = val),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _selectedCategory = null;
+                              _selectedYear = null;
+                              _selectedComplexity = null;
+                              _isFree = false;
+                            });
+                            _applyFilter();
+                            Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: BorderSide(color: context.borderColor),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: Text('Сбросить', style: TextStyle(color: context.textPrimary)),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _applyFilter();
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _primaryPurple,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Применить', style: TextStyle(color: Colors.white)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

@@ -8,6 +8,7 @@ class CourseModel {
   final double? price;
   final int? complexity;
   final String? status; // Изменено с bool? на String?
+  final String? category;
 
   CourseModel({
     required this.id,
@@ -19,6 +20,7 @@ class CourseModel {
     this.price,
     this.complexity,
     this.status,
+    this.category,
   });
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,7 @@ class CourseModel {
           : null,
       complexity: json['complexity'] as int?,
       status: status,
+      category: json['category'] as String?,
     );
   }
 
@@ -60,6 +63,7 @@ class CourseModel {
       if (price != null) 'price': price,
       if (complexity != null) 'complexity': complexity,
       if (status != null) 'status': status,
+      if (category != null) 'category': category,
     };
   }
 
