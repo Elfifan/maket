@@ -619,38 +619,68 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedCategory = null;
-                              _selectedYear = null;
-                              _selectedComplexity = null;
-                              _isFree = false;
-                            });
-                            _applyFilter();
-                            Navigator.pop(context);
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            side: BorderSide(color: context.borderColor),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: SizedBox(
+                          height: 50,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              setState(() {
+                                _selectedCategory = null;
+                                _selectedYear = null;
+                                _selectedComplexity = null;
+                                _isFree = false;
+                              });
+                              _applyFilter();
+                              Navigator.pop(context);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: context.borderColor),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: Text('Сбросить', style: TextStyle(color: context.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
                           ),
-                          child: Text('Сбросить', style: TextStyle(color: context.textPrimary)),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            _applyFilter();
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryPurple,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              colors: context.isDark
+                                  ? [_primaryPurple.withValues(alpha: 0.25), const Color(0xFFF2C9D4).withValues(alpha: 0.15)]
+                                  : [_primaryPurple, const Color(0xFFF2C9D4)],
+                            ),
+                            border: context.isDark
+                                ? Border.all(color: Colors.white.withValues(alpha: 0.1))
+                                : null,
+                            boxShadow: context.isDark ? null : [
+                              BoxShadow(
+                                color: _primaryPurple.withValues(alpha: 0.3), 
+                                blurRadius: 12, 
+                                offset: const Offset(0, 4)
+                              ),
+                            ],
                           ),
-                          child: const Text('Применить', style: TextStyle(color: Colors.white)),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _applyFilter();
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            child: const Text(
+                              'Применить',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],

@@ -763,13 +763,12 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
   Future<bool> isCourseFavourite(int userId, int courseId) async {
     try {
       final response = await _client
-          .from('user_courses')
-          .select('favourites')
+          .from('user_favourites')
+          .select('id')
           .eq('id_user', userId)
           .eq('id_courses', courseId)
           .maybeSingle();
-      if (response == null) return false;
-      return response['favourites'] == true;
+      return response != null;
     } catch (e) {
       debugPrint('Error checking favourite status: $e');
       return false;
@@ -778,26 +777,25 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
 
   Future<bool> toggleFavourite(int userId, int courseId, bool makeFavourite, {double purchasePrice = 0.0}) async {
     try {
-      final existing = await _client
-          .from('user_courses')
-          .select('id')
-          .eq('id_user', userId)
-          .eq('id_courses', courseId)
-          .maybeSingle();
-
-      if (existing != null) {
+      if (makeFavourite) {
+        final existing = await _client
+            .from('user_favourites')
+            .select('id')
+            .eq('id_user', userId)
+            .eq('id_courses', courseId)
+            .maybeSingle();
+        if (existing == null) {
+          await _client.from('user_favourites').insert({
+            'id_user': userId,
+            'id_courses': courseId,
+          });
+        }
+      } else {
         await _client
-            .from('user_courses')
-            .update({'favourites': makeFavourite})
+            .from('user_favourites')
+            .delete()
             .eq('id_user', userId)
             .eq('id_courses', courseId);
-      } else {
-        await _client.from('user_courses').insert({
-          'id_user': userId,
-          'id_courses': courseId,
-          'purchase_price': purchasePrice,
-          'favourites': makeFavourite,
-        });
       }
       return true;
     } catch (e) {
@@ -811,10 +809,9 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
   }) async {
     try {
       final resp = await _client
-          .from('user_courses')
+          .from('user_favourites')
           .select('id_courses')
-          .eq('id_user', userId)
-          .eq('favourites', true);
+          .eq('id_user', userId);
       final ids = List<Map<String, dynamic>>.from(resp)
           .map((e) => e['id_courses'])
           .toList();
@@ -836,7 +833,7 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
 
   Stream<List<CourseModel>> streamUserFavouriteCourses({required int userId}) {
     return _client
-        .from('user_courses')
+        .from('user_favourites')
         .stream(primaryKey: ['id'])
         .eq('id_user', userId)
         .asyncMap((_) => getUserFavouriteCourses(userId: userId));
@@ -914,6 +911,48 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
         .stream(primaryKey: ['id'])
         .eq('id_user', userId)
         .asyncMap((_) => getUserCompletedCourses(userId: userId));
+  }
+
+  Future<bool?> checkAuthorStatus(int userId) async {
+    try {
+      final response = await _client
+          .from('employee')
+          .select('status')
+          .eq('id_user', userId)
+          .maybeSingle();
+      if (response == null) return null;
+      return response['status'] as bool?;
+    } catch (e) {
+      debugPrint('Error checking if user is author: $e');
+      return null;
+    }
+  }
+
+  Future<bool> becomeAuthor({
+    required int userId,
+    required String name,
+    required String surname,
+    required String patronymic,
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _client.from('employee').insert({
+        'id_user': userId,
+        'name': name,
+        'surname': surname,
+        'patronymic': patronymic,
+        'email': email,
+        'password': password,
+        'status': false,
+        'device_date': DateTime.now().toIso8601String().split('T')[0],
+        'role': 'Автор',
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error registering user as author: $e');
+      return false;
+    }
   }
 
   SupabaseClient get client {
