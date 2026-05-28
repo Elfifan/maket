@@ -41,6 +41,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> with RouteAwa
   bool _hasCertificate = false;
   bool _isGeneratingCertificate = false;
   int _selectedTabIndex = 0;
+  bool _isFavourite = false;
 
   // Константы дизайна
   static const Color _textGrey = Color(0xFF9094A6);
@@ -92,7 +93,43 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> with RouteAwa
       authProvider.currentUser!.id!,
       widget.course.id,
     );
-    if (mounted) setState(() => _isEnrolled = enrolled);
+    final fav = await SupabaseService().isCourseFavourite(
+      authProvider.currentUser!.id!,
+      widget.course.id,
+    );
+    if (mounted) {
+      setState(() {
+        _isEnrolled = enrolled;
+        _isFavourite = fav;
+      });
+    }
+  }
+
+  Future<void> _toggleFavourite() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Пожалуйста, войдите в аккаунт')),
+      );
+      return;
+    }
+    
+    final newFav = !_isFavourite;
+    setState(() => _isFavourite = newFav);
+    
+    final success = await SupabaseService().toggleFavourite(
+      authProvider.currentUser!.id!,
+      widget.course.id,
+      newFav,
+      purchasePrice: widget.course.price ?? 0.0,
+    );
+    
+    if (!success && mounted) {
+      setState(() => _isFavourite = !newFav);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось изменить статус избранного')),
+      );
+    }
   }
 
   Future<void> _checkAndGenerateCertificate(UserModel user) async {
@@ -323,6 +360,15 @@ for (final module in _courseStructure) {
         'Детали курса',
         style: TextStyle(color: context.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
       ),
+      actions: [
+        IconButton(
+          icon: Icon(
+            _isFavourite ? Icons.favorite : Icons.favorite_border,
+            color: _isFavourite ? Colors.red : context.textPrimary,
+          ),
+          onPressed: _toggleFavourite,
+        ),
+      ],
     );
   }
 

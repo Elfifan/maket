@@ -217,7 +217,11 @@ class CertificateService {
                       ),
                       pw.SizedBox(height: 20),
                       pw.Text(
-                        user.name ?? 'Ученик',
+                        (user.name != null && user.name!.trim().isNotEmpty)
+                            ? user.name!.trim()
+                            : (user.email != null && user.email!.isNotEmpty)
+                                ? user.email!.split('@')[0]
+                                : 'Ученик',
                         style: pw.TextStyle(font: boldFont, fontSize: 24, color: textDark),
                       ),
                       pw.SizedBox(height: 4),

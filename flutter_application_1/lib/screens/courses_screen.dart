@@ -19,6 +19,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   final List<CourseModel> _allCourses = [];
   List<CourseModel> _displayCourses = [];
   List<CourseModel> _myCourses = [];
+  List<CourseModel> _favouriteCourses = [];
   bool _loading = false;
   String? _errorMessage;
   String _activeFilter = 'Все';
@@ -34,10 +35,12 @@ class _CoursesScreenState extends State<CoursesScreen> {
   final List<Map<String, dynamic>> _categories = [
     {'label': 'Все', 'icon': Icons.grid_view_rounded},
     {'label': 'Мои курсы', 'icon': Icons.book_rounded},
+    {'label': 'Избранное', 'icon': Icons.favorite_rounded},
   ];
 
   StreamSubscription? _coursesSub;
   StreamSubscription? _myCoursesSub;
+  StreamSubscription? _favouriteCoursesSub;
 
   @override
   void initState() {
@@ -87,6 +90,17 @@ class _CoursesScreenState extends State<CoursesScreen> {
             });
           }
         }, onError: (e) => debugPrint('Error streaming user courses: $e'));
+
+        _favouriteCoursesSub = SupabaseService()
+            .streamUserFavouriteCourses(userId: authProvider.currentUser!.id!)
+            .listen((favCourses) {
+          if (mounted) {
+            setState(() {
+              _favouriteCourses = favCourses;
+              _applyFilter();
+            });
+          }
+        }, onError: (e) => debugPrint('Error streaming favourite courses: $e'));
       }
     } catch (e) {
       if (mounted) {
@@ -103,6 +117,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     _searchController.dispose();
     _coursesSub?.cancel();
     _myCoursesSub?.cancel();
+    _favouriteCoursesSub?.cancel();
     super.dispose();
   }
 
@@ -112,7 +127,14 @@ class _CoursesScreenState extends State<CoursesScreen> {
         _activeFilter = categoryLabel;
       }
       
-      List<CourseModel> baseList = _activeFilter == 'Мои курсы' ? _myCourses : _allCourses;
+      List<CourseModel> baseList;
+      if (_activeFilter == 'Мои курсы') {
+        baseList = _myCourses;
+      } else if (_activeFilter == 'Избранное') {
+        baseList = _favouriteCourses;
+      } else {
+        baseList = _allCourses;
+      }
       
       _displayCourses = baseList.where((course) {
         if (_searchController.text.isNotEmpty) {
@@ -315,7 +337,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
                           Text(
                             _activeFilter == 'Мои курсы'
                                 ? 'Мои курсы'
-                                : 'Новые курсы',
+                                : _activeFilter == 'Избранное'
+                                    ? 'Избранное'
+                                    : 'Новые курсы',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,

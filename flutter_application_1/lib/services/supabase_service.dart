@@ -199,7 +199,7 @@ Future<bool> isUserEnrolled(int userId, int courseId) async {
       final coursesResp = await _client
           .from('courses')
           .select(
-            'id,id_employee,name,description,icon,date_create,price,complexity,status',
+            'id,id_employee,name,description,icon,date_create,price,complexity,status,category',
           )
           .inFilter('id', ids.toSet().toList())
           .eq('status', 'Активный');
@@ -758,6 +758,88 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
         .stream(primaryKey: ['id'])
         .eq('id_user', userId)
         .asyncMap((_) => getUserCourses(userId: userId));
+  }
+
+  Future<bool> isCourseFavourite(int userId, int courseId) async {
+    try {
+      final response = await _client
+          .from('user_courses')
+          .select('favourites')
+          .eq('id_user', userId)
+          .eq('id_courses', courseId)
+          .maybeSingle();
+      if (response == null) return false;
+      return response['favourites'] == true;
+    } catch (e) {
+      debugPrint('Error checking favourite status: $e');
+      return false;
+    }
+  }
+
+  Future<bool> toggleFavourite(int userId, int courseId, bool makeFavourite, {double purchasePrice = 0.0}) async {
+    try {
+      final existing = await _client
+          .from('user_courses')
+          .select('id')
+          .eq('id_user', userId)
+          .eq('id_courses', courseId)
+          .maybeSingle();
+
+      if (existing != null) {
+        await _client
+            .from('user_courses')
+            .update({'favourites': makeFavourite})
+            .eq('id_user', userId)
+            .eq('id_courses', courseId);
+      } else {
+        await _client.from('user_courses').insert({
+          'id_user': userId,
+          'id_courses': courseId,
+          'purchase_price': purchasePrice,
+          'favourites': makeFavourite,
+        });
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Error toggling favourite: $e');
+      return false;
+    }
+  }
+
+  Future<List<CourseModel>> getUserFavouriteCourses({
+    required int userId,
+  }) async {
+    try {
+      final resp = await _client
+          .from('user_courses')
+          .select('id_courses')
+          .eq('id_user', userId)
+          .eq('favourites', true);
+      final ids = List<Map<String, dynamic>>.from(resp)
+          .map((e) => e['id_courses'])
+          .toList();
+      if (ids.isEmpty) return [];
+      final coursesResp = await _client
+          .from('courses')
+          .select(
+            'id,id_employee,name,description,icon,date_create,price,complexity,status,category',
+          )
+          .inFilter('id', ids.toSet().toList())
+          .eq('status', 'Активный');
+      final list = List<Map<String, dynamic>>.from(coursesResp as List);
+      return list.map((j) => CourseModel.fromJson(j)).toList();
+    } catch (e, st) {
+      debugPrint('[SupabaseService] error getting user favourite courses: $e');
+      return [];
+    }
+  }
+
+  Stream<List<CourseModel>> streamUserFavouriteCourses({required int userId}) {
+    return _client
+        .from('user_courses')
+        .stream(primaryKey: ['id'])
+        .eq('id_user', userId)
+        .asyncMap((_) => getUserFavouriteCourses(userId: userId));
   }
 
   Stream<List<AchievementModel>> streamUserAchievements(int userId) {
