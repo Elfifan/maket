@@ -29,10 +29,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   static const Color _primaryPurple = Color(0xFFA58EFF);
 
+  List<AchievementModel>? _cachedAchievements;
+  List<CertificateModel>? _cachedCertificates;
+  Stream<List<AchievementModel>>? _achievementsStream;
+  Stream<List<CertificateModel>>? _certificatesStream;
+
   @override
   void initState() {
     super.initState();
     _checkAuthorStatus();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.currentUser;
+    if (user != null && user.id != null) {
+      _achievementsStream ??= SupabaseService().streamUserAchievements(user.id!);
+      _certificatesStream ??= SupabaseService().streamUserCertificates(user.id!);
+    } else {
+      _achievementsStream = null;
+      _certificatesStream = null;
+      _cachedAchievements = null;
+      _cachedCertificates = null;
+    }
   }
 
   Future<void> _checkAuthorStatus() async {
@@ -343,12 +364,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text('Мои достижения', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.textPrimary)),
         const SizedBox(height: 16),
         StreamBuilder<List<AchievementModel>>(
-          stream: SupabaseService().streamUserAchievements(userId),
+          stream: _achievementsStream,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+            if (snapshot.hasData) {
+              _cachedAchievements = snapshot.data;
+            }
+            final achievements = _cachedAchievements ?? [];
+            if (snapshot.connectionState == ConnectionState.waiting && achievements.isEmpty) {
               return const SizedBox(height: 160, child: Center(child: CircularProgressIndicator(color: _primaryPurple)));
             }
-            final achievements = snapshot.data ?? [];
             if (achievements.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 30),
@@ -422,12 +446,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text('Мои сертификаты', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: context.textPrimary)),
         const SizedBox(height: 16),
         StreamBuilder<List<CertificateModel>>(
-          stream: SupabaseService().streamUserCertificates(userId),
+          stream: _certificatesStream,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+            if (snapshot.hasData) {
+              _cachedCertificates = snapshot.data;
+            }
+            final certificates = _cachedCertificates ?? [];
+            if (snapshot.connectionState == ConnectionState.waiting && certificates.isEmpty) {
               return const SizedBox(height: 160, child: Center(child: CircularProgressIndicator(color: _primaryPurple)));
             }
-            final certificates = snapshot.data ?? [];
             if (certificates.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 30),

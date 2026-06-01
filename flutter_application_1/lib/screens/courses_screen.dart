@@ -44,6 +44,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   StreamSubscription? _myCoursesSub;
   StreamSubscription? _favouriteCoursesSub;
   StreamSubscription? _completedCoursesSub;
+  bool _isReconnecting = false;
 
   @override
   void initState() {
@@ -51,19 +52,49 @@ class _CoursesScreenState extends State<CoursesScreen> {
     _setupStreams();
   }
 
-  Future<void> _setupStreams() async {
-    if (!mounted) return;
-    setState(() {
-      _loading = true;
-      _errorMessage = null;
+  void _reconnectStreams() {
+    if (_isReconnecting || !mounted) return;
+    _isReconnecting = true;
+    debugPrint('[CoursesScreen] Начинаем переподключение Realtime-стримов через 5 секунд...');
+    
+    Future.delayed(const Duration(seconds: 5), () async {
+      if (!mounted) return;
+      _isReconnecting = false;
+      
+      // Отменяем старые подписки
+      await _cancelStreams();
+      
+      // Заново запускаем стримы (тихо, без лоадера)
+      _setupStreams(silent: true);
     });
+  }
+
+  Future<void> _cancelStreams() async {
+    await _coursesSub?.cancel();
+    await _myCoursesSub?.cancel();
+    await _favouriteCoursesSub?.cancel();
+    await _completedCoursesSub?.cancel();
+    _coursesSub = null;
+    _myCoursesSub = null;
+    _favouriteCoursesSub = null;
+    _completedCoursesSub = null;
+  }
+
+  Future<void> _setupStreams({bool silent = false}) async {
+    if (!mounted) return;
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       await SupabaseService().initialize();
       if (!mounted) return;
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      _coursesSub = SupabaseService().streamCourses().listen((courses) {
+      _coursesSub ??= SupabaseService().streamCourses().listen((courses) {
         if (mounted) {
           setState(() {
             _allCourses.clear();
@@ -80,11 +111,15 @@ class _CoursesScreenState extends State<CoursesScreen> {
             _loading = false;
           });
         }
+        _reconnectStreams();
       });
 
-      if (authProvider.currentUser != null) {
-        _myCoursesSub = SupabaseService()
-            .streamUserCourses(userId: authProvider.currentUser!.id!)
+      final user = authProvider.currentUser;
+      if (user != null && user.id != null) {
+        final userId = user.id!;
+        
+        _myCoursesSub ??= SupabaseService()
+            .streamUserCourses(userId: userId)
             .listen((myCourses) {
           if (mounted) {
             setState(() {
@@ -92,10 +127,13 @@ class _CoursesScreenState extends State<CoursesScreen> {
               _applyFilter();
             });
           }
-        }, onError: (e) => debugPrint('Error streaming user courses: $e'));
+        }, onError: (e) {
+          debugPrint('Error streaming user courses: $e');
+          _reconnectStreams();
+        });
 
-        _favouriteCoursesSub = SupabaseService()
-            .streamUserFavouriteCourses(userId: authProvider.currentUser!.id!)
+        _favouriteCoursesSub ??= SupabaseService()
+            .streamUserFavouriteCourses(userId: userId)
             .listen((favCourses) {
           if (mounted) {
             setState(() {
@@ -103,10 +141,13 @@ class _CoursesScreenState extends State<CoursesScreen> {
               _applyFilter();
             });
           }
-        }, onError: (e) => debugPrint('Error streaming favourite courses: $e'));
+        }, onError: (e) {
+          debugPrint('Error streaming favourite courses: $e');
+          _reconnectStreams();
+        });
 
-        _completedCoursesSub = SupabaseService()
-            .streamUserCompletedCourses(userId: authProvider.currentUser!.id!)
+        _completedCoursesSub ??= SupabaseService()
+            .streamUserCompletedCourses(userId: userId)
             .listen((completedCourses) {
           if (mounted) {
             setState(() {
@@ -114,25 +155,26 @@ class _CoursesScreenState extends State<CoursesScreen> {
               _applyFilter();
             });
           }
-        }, onError: (e) => debugPrint('Error streaming completed courses: $e'));
+        }, onError: (e) {
+          debugPrint('Error streaming completed courses: $e');
+          _reconnectStreams();
+        });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !silent) {
         setState(() {
           _errorMessage = 'Ошибка инициализации. Проверьте интернет.';
           _loading = false;
         });
       }
+      _reconnectStreams();
     }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _coursesSub?.cancel();
-    _myCoursesSub?.cancel();
-    _favouriteCoursesSub?.cancel();
-    _completedCoursesSub?.cancel();
+    _cancelStreams();
     super.dispose();
   }
 
