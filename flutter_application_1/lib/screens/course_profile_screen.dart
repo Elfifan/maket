@@ -87,14 +87,16 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> with RouteAwa
 
   Future<void> _checkEnrollment() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.currentUser == null) return;
+    final user = authProvider.currentUser;
+    if (user == null || user.id == null) return;
 
+    final userId = user.id!;
     final enrolled = await SupabaseService().isUserEnrolled(
-      authProvider.currentUser!.id!,
+      userId,
       widget.course.id,
     );
     final fav = await SupabaseService().isCourseFavourite(
-      authProvider.currentUser!.id!,
+      userId,
       widget.course.id,
     );
     if (mounted) {
@@ -107,18 +109,20 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> with RouteAwa
 
   Future<void> _toggleFavourite() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.currentUser == null) {
+    final user = authProvider.currentUser;
+    if (user == null || user.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Пожалуйста, войдите в аккаунт')),
       );
       return;
     }
     
+    final userId = user.id!;
     final newFav = !_isFavourite;
     setState(() => _isFavourite = newFav);
     
     final success = await SupabaseService().toggleFavourite(
-      authProvider.currentUser!.id!,
+      userId,
       widget.course.id,
       newFav,
       purchasePrice: widget.course.price ?? 0.0,
@@ -248,10 +252,12 @@ for (final module in _courseStructure) {
       // Загружаем прогресс пользователя
       if (!mounted) return;
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.currentUser != null) {
-        final completedSubmodules = await SupabaseService().getCompletedSubmodules(authProvider.currentUser!.id!);
-        final completedTestSubmodules = await SupabaseService().getCompletedTestSubmodules(authProvider.currentUser!.id!);
-        final completedPracticalTasks = await SupabaseService().getCompletedPracticalTasks(authProvider.currentUser!.id!);
+      final user = authProvider.currentUser;
+      if (user != null && user.id != null) {
+        final userId = user.id!;
+        final completedSubmodules = await SupabaseService().getCompletedSubmodules(userId);
+        final completedTestSubmodules = await SupabaseService().getCompletedTestSubmodules(userId);
+        final completedPracticalTasks = await SupabaseService().getCompletedPracticalTasks(userId);
 
         if (mounted) {
           setState(() {
@@ -273,12 +279,13 @@ for (final module in _courseStructure) {
       // Проверяем наличие сертификата и генерируем если нужно
       if (!mounted) return;
       final authProvider2 = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider2.currentUser != null) {
-        final hasCertificate = await CertificateService().hasCertificate(authProvider2.currentUser!.id!, widget.course.id);
+      final user2 = authProvider2.currentUser;
+      if (user2 != null && user2.id != null) {
+        final hasCertificate = await CertificateService().hasCertificate(user2.id!, widget.course.id);
         if (mounted) setState(() => _hasCertificate = hasCertificate);
 
         // Проверяем и генерируем сертификат после загрузки всего
-        await _checkAndGenerateCertificate(authProvider2.currentUser!);
+        await _checkAndGenerateCertificate(user2);
       }
 
       debugPrint('Modules loading completed');
@@ -861,15 +868,17 @@ Widget _buildContactAuthorButton() {
 
 Future<void> _contactAuthor() async {
   final authProvider = Provider.of<AuthProvider>(context, listen: false);
-  if (authProvider.currentUser == null) {
+  final user = authProvider.currentUser;
+  if (user == null || user.id == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Пожалуйста, войдите в аккаунт, чтобы начать чат с автором')),
     );
     return;
   }
 
+  final userId = user.id!;
   final roomId = await ChatService().getOrCreateChatRoom(
-    authProvider.currentUser!.id!,
+    userId,
     widget.course.id,
   );
 
@@ -888,7 +897,7 @@ Future<void> _contactAuthor() async {
       MaterialPageRoute(
         builder: (context) => UserChatScreen(
           roomId: roomId,
-          userId: authProvider.currentUser!.id!,
+          userId: userId,
           courseName: widget.course.name,
         ),
       ),
@@ -986,8 +995,11 @@ Widget _buttonTemplate({
 
   Future<void> _handlePurchase() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.currentUser == null) return;
+    final user = authProvider.currentUser;
+    if (user == null || user.id == null || user.email == null) return;
 
+    final userId = user.id!;
+    final userEmail = user.email!;
     final price = widget.course.price ?? 0;
     
     // Если курс платный, показываем окно оплаты
@@ -1006,9 +1018,9 @@ Widget _buttonTemplate({
     setState(() => _isPurchasing = true);
     
     final success = await SupabaseService().purchaseCourse(
-      authProvider.currentUser!.id!,
+      userId,
       widget.course,
-      authProvider.currentUser!.email!,
+      userEmail,
     );
 
     if (mounted) {

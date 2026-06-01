@@ -24,12 +24,11 @@ class _MainScreenState extends State<MainScreen> {
     final userId = authProvider.currentUser?.id ?? 0;
     final isDark = context.isDark;
 
-    // Все экраны (4 вкладки)
     final List<Widget> screens = [
-      const CoursesScreen(),                          // 0 - Каталог
-      UserChatsListScreen(userId: userId),            // 1 - Чаты
-      const AiChatScreen(),                           // 2 - Чат ИИ
-      const ProfileScreen(),                          // 3 - Профиль
+      const CoursesScreen(),
+      UserChatsListScreen(userId: userId),
+      const AiChatScreen(),
+      const ProfileScreen(),
     ];
 
     return Scaffold(
@@ -88,11 +87,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
           ],
-          // Основной контент
-          IndexedStack(
-            index: _selectedIndex,
-            children: screens,
-          ),
+          IndexedStack(index: _selectedIndex, children: screens),
         ],
       ),
       extendBody: true,

@@ -6,27 +6,26 @@ import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/courses_screen.dart'; 
+import 'screens/courses_screen.dart';
 
 import 'dart:ui';
 import 'dart:io';
 
-
-// 2. Добавляем класс для игнорирования ошибок сертификатов
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
     return super.createHttpClient(context)
-      ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
   }
 }
 
-final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
 
 void main() {
-  // 3. Устанавливаем глобальный обход сертификатов ПЕРЕД запуском приложения
   HttpOverrides.global = MyHttpOverrides();
-  
+
   runApp(const MyApp());
 }
 
@@ -83,7 +82,7 @@ class _InitialScreenState extends State<InitialScreen> {
   Future<void> _initialize() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     await authProvider.initialize();
-    
+
     if (mounted) {
       setState(() {
         _isInitializing = false;
@@ -94,16 +93,14 @@ class _InitialScreenState extends State<InitialScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isInitializing) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        return authProvider.isLoggedIn 
-            ? const MainScreen() 
-            : const OnboardingScreen(); 
+        return authProvider.isLoggedIn
+            ? const MainScreen()
+            : const OnboardingScreen();
       },
     );
   }
@@ -112,9 +109,9 @@ class _InitialScreenState extends State<InitialScreen> {
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.trackpad,
-        PointerDeviceKind.stylus,
-      };
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+  };
 }
