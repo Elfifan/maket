@@ -1,4 +1,5 @@
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool? _authorStatus;
   bool _checkingAuthor = true;
+  StreamSubscription<bool?>? _authorStatusSubscription;
 
   static const Color _primaryPurple = Color(0xFFA58EFF);
 
@@ -48,11 +50,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user != null && user.id != null) {
       _achievementsStream ??= SupabaseService().streamUserAchievements(user.id!);
       _certificatesStream ??= SupabaseService().streamUserCertificates(user.id!);
+      _authorStatusSubscription ??= SupabaseService().streamAuthorStatus(user.id!).listen((status) {
+        if (mounted) {
+          setState(() {
+            _authorStatus = status;
+            _checkingAuthor = false;
+          });
+        }
+      });
     } else {
       _achievementsStream = null;
       _certificatesStream = null;
       _cachedAchievements = null;
       _cachedCertificates = null;
+      _authorStatusSubscription?.cancel();
+      _authorStatusSubscription = null;
     }
   }
 
@@ -73,6 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _authorStatusSubscription?.cancel();
     super.dispose();
   }
 

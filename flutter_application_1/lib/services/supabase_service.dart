@@ -928,6 +928,17 @@ Future<Set<int>> getCompletedPracticalTasks(int userId) async {
     }
   }
 
+  Stream<bool?> streamAuthorStatus(int userId) {
+    return _client
+        .from('employee')
+        .stream(primaryKey: ['id_user'])
+        .eq('id_user', userId)
+        .map((event) {
+          if (event.isEmpty) return null;
+          return event.first['status'] as bool?;
+        });
+  }
+
   Future<bool> becomeAuthor({
     required int userId,
     required String name,
